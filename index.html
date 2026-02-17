@@ -129,25 +129,29 @@
 
     <!-- CREATE / EDIT PLAN MODAL -->
     <div id="create-plan-modal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header" id="modal-title">Create Workout Plan</div>
             <input type="hidden" id="edit-plan-id">
+            
             <div class="form-group">
                 <label class="form-label">Plan Name</label>
-                <input type="text" class="form-input" id="plan-name" placeholder="e.g. Push Day A">
+                <input type="text" class="form-input" id="plan-name" placeholder="e.g., Push/Pull/Legs">
             </div>
+            
             <div class="form-group">
                 <label class="form-label">Description</label>
-                <input type="text" class="form-input" id="plan-description" placeholder="e.g. Upper Body Strength">
+                <input type="text" class="form-input" id="plan-description" placeholder="e.g., 3-Day Split Program">
             </div>
+            
             <div class="form-group">
-                <label class="form-label">Exercises</label>
-                <div id="exercise-builder"></div>
-                <button class="btn btn-secondary btn-small" onclick="addExerciseToBuilder()" style="margin-top:8px;">+ Add Exercise</button>
+                <label class="form-label">Workout Days</label>
+                <div id="days-builder"></div>
+                <button class="btn btn-secondary btn-small" id="add-day-btn" style="margin-top: 12px;">+ Add Day</button>
             </div>
-            <div style="display:flex; gap:12px; margin-top:30px;">
-                <button class="btn" onclick="savePlan()">Save Plan</button>
-                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            
+            <div style="display: flex; gap: 12px; margin-top: 30px;">
+                <button class="btn" id="save-plan-btn">Save Plan</button>
+                <button class="btn btn-secondary" id="cancel-plan-btn">Cancel</button>
             </div>
         </div>
     </div>
