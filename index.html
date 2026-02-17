@@ -33,54 +33,57 @@
             <div class="header-content">
                 <div class="logo">Iron Track</div>
                 <nav class="nav-tabs">
-                    <button class="nav-tab active" onclick="switchView('workout', event)">Workout</button>
-                    <button class="nav-tab" onclick="switchView('plans', event)">Plans</button>
-                    <button class="nav-tab" onclick="switchView('progress', event)">Progress</button>
+                    <button class="nav-tab active" data-view="workout">Workout</button>
+                    <button class="nav-tab" data-view="plans">Plans</button>
+                    <button class="nav-tab" data-view="progress">Progress</button>
                 </nav>
             </div>
         </div>
     </header>
 
     <div class="container">
-
-        <!-- WORKOUT VIEW -->
         <div id="workout-view" class="view active">
             <div class="hero-workout" id="workout-hero">
                 <h2 id="today-workout-title">Today's Workout</h2>
-                <p style="color: var(--text-secondary); margin-bottom: 30px;" id="today-workout-desc">Push Day A — Upper Body Strength</p>
-                <button class="btn" onclick="startWorkout()">▶ Start Workout</button>
-                <button class="btn btn-secondary" style="margin-left: 16px;" onclick="navToPlans()">Choose Plan</button>
+                <p style="color: var(--text-secondary); margin-bottom: 30px;" id="today-workout-desc">Push Day A - Upper Body Strength</p>
+                <div class="hero-workout" id="workout-hero">
+    <h2 id="today-workout-title">Today's Workout</h2>
+    <p style="color: var(--text-secondary); margin-bottom: 30px;" id="today-workout-desc">Push Day A - Upper Body Strength</p>
+    <div id="last-workout-info"></div>  <!-- ADD THIS LINE -->
+    <button class="btn" id="start-workout-btn">▶ Start Workout</button>
+    <button class="btn btn-secondary" style="margin-left: 16px;" id="choose-plan-btn">Choose Plan</button>
+</div>
+                <button class="btn" id="start-workout-btn">▶ Start Workout</button>
+                <button class="btn btn-secondary" style="margin-left: 16px;" id="choose-plan-btn">Choose Plan</button>
             </div>
 
-            <div id="active-workout" style="display:none;">
-                <div style="margin-bottom:30px; display:flex; justify-content:space-between; align-items:center;">
+            <div id="active-workout" style="display: none;">
+                <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
                     <div>
-                        <h2 style="font-family:'Barlow Condensed',sans-serif; font-size:32px; font-weight:800; text-transform:uppercase;" id="active-workout-name"></h2>
-                        <div id="workout-elapsed" style="color:var(--text-secondary); font-size:14px; margin-top:4px;"></div>
+                        <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 32px; font-weight: 800; text-transform: uppercase;" id="active-workout-name"></h2>
+                        <div id="workout-elapsed" style="color: var(--text-secondary); font-size: 14px; margin-top: 4px;"></div>
                     </div>
-                    <button class="btn btn-small" onclick="finishWorkout()">Finish Workout</button>
+                    <button class="btn btn-small" id="finish-workout-btn">Finish Workout</button>
                 </div>
                 <div id="exercise-container"></div>
                 <div class="rest-timer" id="rest-timer">
                     <div class="timer-display" id="timer-display">2:00</div>
                     <div class="timer-label">Rest Period</div>
-                    <button class="btn btn-small" onclick="skipRest()" style="margin-top:16px;">Skip Rest</button>
+                    <button class="btn btn-small" id="skip-rest-btn" style="margin-top: 16px;">Skip Rest</button>
                 </div>
             </div>
         </div>
 
-        <!-- PLANS VIEW -->
         <div id="plans-view" class="view">
-            <div style="margin-bottom:30px; display:flex; justify-content:space-between; align-items:center;">
-                <h2 style="font-family:'Barlow Condensed',sans-serif; font-size:36px; font-weight:800; text-transform:uppercase;">Workout Plans</h2>
-                <button class="btn btn-small" onclick="showCreatePlan()">+ New Plan</button>
+            <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase;">Workout Plans</h2>
+                <button class="btn btn-small" id="create-plan-btn">+ New Plan</button>
             </div>
             <div class="workout-plans-grid" id="plans-grid"></div>
         </div>
 
-        <!-- PROGRESS VIEW -->
         <div id="progress-view" class="view">
-            <h2 style="font-family:'Barlow Condensed',sans-serif; font-size:36px; font-weight:800; text-transform:uppercase; margin-bottom:30px;">Your Progress</h2>
+            <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; margin-bottom: 30px;">Your Progress</h2>
             <div class="stat-cards">
                 <div class="stat-card">
                     <div class="stat-value" id="total-workouts">0</div>
@@ -108,26 +111,19 @@
             <div class="chart-container">
                 <div class="chart-header"><div class="chart-title">Personal Records</div></div>
                 <div id="pr-list">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">🏆</div>
-                        <p>Complete workouts to set PRs</p>
-                    </div>
+                    <div class="empty-state"><div class="empty-state-icon">🏆</div><p>Complete workouts to set PRs</p></div>
                 </div>
             </div>
 
             <div class="chart-container">
                 <div class="chart-header"><div class="chart-title">Workout History</div></div>
                 <div id="history-list">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📋</div>
-                        <p>No workouts logged yet</p>
-                    </div>
+                    <div class="empty-state"><div class="empty-state-icon">📋</div><p>No workouts logged yet</p></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- CREATE / EDIT PLAN MODAL -->
     <div id="create-plan-modal" class="modal">
         <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header" id="modal-title">Create Workout Plan</div>
