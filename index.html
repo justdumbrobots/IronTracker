@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Track your workouts, log sets and reps, monitor progress over time">
+    <meta name="theme-color" content="#ff4d00">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Iron Track">
+    <title>Iron Track - Workout Logger</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="install-banner" class="install-banner">
+        <div class="install-content">
+            <div class="install-icon">📱</div>
+            <div class="install-text">
+                <div class="install-title">Install Iron Track</div>
+                <div class="install-subtitle">Get the full app experience</div>
+            </div>
+            <button class="btn btn-small" id="install-btn">Install</button>
+            <button class="btn-close" id="close-install">✕</button>
+        </div>
+    </div>
+
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">Iron Track</div>
+                <nav class="nav-tabs">
+                    <button class="nav-tab active" onclick="switchView('workout', event)">Workout</button>
+                    <button class="nav-tab" onclick="switchView('plans', event)">Plans</button>
+                    <button class="nav-tab" onclick="switchView('progress', event)">Progress</button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- WORKOUT VIEW -->
+        <div id="workout-view" class="view active">
+            <div class="hero-workout" id="workout-hero">
+                <h2 id="today-workout-title">Today's Workout</h2>
+                <p style="color: var(--text-secondary); margin-bottom: 30px;" id="today-workout-desc">Push Day A — Upper Body Strength</p>
+                <button class="btn" onclick="startWorkout()">▶ Start Workout</button>
+                <button class="btn btn-secondary" style="margin-left: 16px;" onclick="navToPlans()">Choose Plan</button>
+            </div>
+
+            <div id="active-workout" style="display:none;">
+                <div style="margin-bottom:30px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h2 style="font-family:'Barlow Condensed',sans-serif; font-size:32px; font-weight:800; text-transform:uppercase;" id="active-workout-name"></h2>
+                        <div id="workout-elapsed" style="color:var(--text-secondary); font-size:14px; margin-top:4px;"></div>
+                    </div>
+                    <button class="btn btn-small" onclick="finishWorkout()">Finish Workout</button>
+                </div>
+                <div id="exercise-container"></div>
+                <div class="rest-timer" id="rest-timer">
+                    <div class="timer-display" id="timer-display">2:00</div>
+                    <div class="timer-label">Rest Period</div>
+                    <button class="btn btn-small" onclick="skipRest()" style="margin-top:16px;">Skip Rest</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PLANS VIEW -->
+        <div id="plans-view" class="view">
+            <div style="margin-bottom:30px; display:flex; justify-content:space-between; align-items:center;">
+                <h2 style="font-family:'Barlow Condensed',sans-serif; font-size:36px; font-weight:800; text-transform:uppercase;">Workout Plans</h2>
+                <button class="btn btn-small" onclick="showCreatePlan()">+ New Plan</button>
+            </div>
+            <div class="workout-plans-grid" id="plans-grid"></div>
+        </div>
+
+        <!-- PROGRESS VIEW -->
+        <div id="progress-view" class="view">
+            <h2 style="font-family:'Barlow Condensed',sans-serif; font-size:36px; font-weight:800; text-transform:uppercase; margin-bottom:30px;">Your Progress</h2>
+            <div class="stat-cards">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-workouts">0</div>
+                    <div class="stat-label">Total Workouts</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-volume">0</div>
+                    <div class="stat-label">Total Volume (lbs)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="weekly-workouts">0</div>
+                    <div class="stat-label">This Week</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="personal-records">0</div>
+                    <div class="stat-label">Personal Records</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header"><div class="chart-title">Volume Per Workout</div></div>
+                <canvas id="volume-chart" height="200"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header"><div class="chart-title">Personal Records</div></div>
+                <div id="pr-list">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🏆</div>
+                        <p>Complete workouts to set PRs</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header"><div class="chart-title">Workout History</div></div>
+                <div id="history-list">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <p>No workouts logged yet</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CREATE / EDIT PLAN MODAL -->
+    <div id="create-plan-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header" id="modal-title">Create Workout Plan</div>
+            <input type="hidden" id="edit-plan-id">
+            <div class="form-group">
+                <label class="form-label">Plan Name</label>
+                <input type="text" class="form-input" id="plan-name" placeholder="e.g. Push Day A">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <input type="text" class="form-input" id="plan-description" placeholder="e.g. Upper Body Strength">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Exercises</label>
+                <div id="exercise-builder"></div>
+                <button class="btn btn-secondary btn-small" onclick="addExerciseToBuilder()" style="margin-top:8px;">+ Add Exercise</button>
+            </div>
+            <div style="display:flex; gap:12px; margin-top:30px;">
+                <button class="btn" onclick="savePlan()">Save Plan</button>
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
