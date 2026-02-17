@@ -225,4 +225,26 @@ header {
     .workout-plans-grid { grid-template-columns: 1fr; }
     .sets-grid { grid-template-columns: repeat(2, 1fr); }
     .install-banner { bottom: 10px; }
+.selected-plan {
+    border-color: var(--success) !important;
+    box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2);
 }
+
+.day-container {
+    background: var(--bg-hover);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.day-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.day-name-input {
+    font-weight: 600;
+    font-size: 16px;
+}}
