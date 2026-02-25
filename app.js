@@ -1,3 +1,24 @@
+import { auth, db } from './firebase-config.js';
+import { 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged,
+    GoogleAuthProvider,
+    signInWithPopup
+} from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+import { 
+    collection, 
+    doc, 
+    setDoc, 
+    getDoc, 
+    updateDoc,
+    onSnapshot
+} from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+// ═════════════════════════════════════════════
+// STATE
+// ═════════════════════════════════════════════
 let workoutPlans = [];
 let workoutHistory = [];
 let currentWorkout = null;
@@ -13,57 +34,121 @@ let exerciseLibrary = [
     'Plank', 'Russian Twists', 'Hanging Leg Raises', 'Deadlift', 'Hip Thrust'
 ];
 
-let deferredPrompt;
+let currentUser = null;
+let unsubscribeSnapshot = null;
 
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js')
-            .then(reg => console.log('✅ Service Worker registered'))
-            .catch(err => console.log('❌ SW registration failed:', err));
-    });
-}
-
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    if (!localStorage.getItem('pwa-installed')) {
-        setTimeout(() => {
-            document.getElementById('install-banner').classList.add('show');
-        }, 3000);
+// ═════════════════════════════════════════════
+// AUTHENTICATION
+// ═════════════════════════════════════════════
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        currentUser = user;
+        loadUserData();
+        showMainApp();
+    } else {
+        currentUser = null;
+        showAuthScreen();
     }
 });
 
-window.addEventListener('appinstalled', () => {
-    localStorage.setItem('pwa-installed', 'true');
-    document.getElementById('install-banner').classList.remove('show');
-});
-
-function save() {
-    localStorage.setItem('irontrack_plans', JSON.stringify(workoutPlans));
-    localStorage.setItem('irontrack_history', JSON.stringify(workoutHistory));
-    localStorage.setItem('irontrack_exercises', JSON.stringify(exerciseLibrary));
-    localStorage.setItem('irontrack_selected_plan', selectedPlanId);
+function showAuthScreen() {
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('main-app').style.display = 'none';
 }
 
-function load() {
-    const plans = localStorage.getItem('irontrack_plans');
-    const history = localStorage.getItem('irontrack_history');
-    const exercises = localStorage.getItem('irontrack_exercises');
-    const selected = localStorage.getItem('irontrack_selected_plan');
+function showMainApp() {
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+    updateProfileUI();
+    updateWorkoutHero();
+}
+
+async function handleLogin(email, password) {
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        showToast('Welcome back! 💪');
+    } catch (error) {
+        let message = 'Login failed';
+        if (error.code === 'auth/user-not-found') message = 'No account found with this email';
+        if (error.code === 'auth/wrong-password') message = 'Incorrect password';
+        if (error.code === 'auth/invalid-email') message = 'Invalid email address';
+        alert(message);
+    }
+}
+
+async function handleSignup(email, password, confirmPassword) {
+    if (password !== confirmPassword) {
+        alert('Passwords do not match');
+        return;
+    }
+    if (password.length < 6) {
+        alert('Password must be at least 6 characters');
+        return;
+    }
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        await initializeUserData(userCredential.user.uid);
+        showToast('Account created! 🎉');
+    } catch (error) {
+        let message = 'Signup failed';
+        if (error.code === 'auth/email-already-in-use') message = 'Email already in use';
+        if (error.code === 'auth/invalid-email') message = 'Invalid email address';
+        if (error.code === 'auth/weak-password') message = 'Password is too weak';
+        alert(message);
+    }
+}
+
+async function handleGoogleAuth() {
+    const provider = new GoogleAuthProvider();
+    try {
+        const result = await signInWithPopup(auth, provider);
+        const userDoc = await getDoc(doc(db, 'users', result.user.uid, 'data', 'workout_data'));
+        if (!userDoc.exists()) {
+            await initializeUserData(result.user.uid);
+        }
+        showToast('Welcome! 💪');
+    } catch (error) {
+        alert('Google sign-in failed: ' + error.message);
+    }
+}
+
+async function handleLogout() {
+    if (!confirm('Are you sure you want to logout?')) return;
+    try {
+        if (unsubscribeSnapshot) unsubscribeSnapshot();
+        await signOut(auth);
+        workoutPlans = [];
+        workoutHistory = [];
+        selectedPlanId = null;
+        showToast('Logged out successfully');
+    } catch (error) {
+        alert('Logout failed: ' + error.message);
+    }
+}
+
+function updateProfileUI() {
+    if (!currentUser) return;
+    const email = currentUser.email;
+    const initial = email.charAt(0).toUpperCase();
+    const createdDate = new Date(parseInt(currentUser.metadata.createdAt));
     
-    if (plans) workoutPlans = JSON.parse(plans);
-    if (history) workoutHistory = JSON.parse(history);
-    if (exercises) exerciseLibrary = JSON.parse(exercises);
-    if (selected && selected !== 'null') selectedPlanId = parseInt(selected);
+    document.getElementById('user-avatar').textContent = initial;
+    document.getElementById('user-email').textContent = email;
+    document.getElementById('user-since').textContent = createdDate.toLocaleDateString('en-US', { 
+        month: 'short', 
+        year: 'numeric' 
+    });
 }
 
-function seedDefaults() {
-    if (workoutPlans.length > 0) return;
-    workoutPlans = [
+// ═════════════════════════════════════════════
+// FIREBASE DATA
+// ═════════════════════════════════════════════
+async function initializeUserData(uid) {
+    const defaultPlans = [
         {
-            id: 1,
-            name: 'Push/Pull/Legs',
-            description: '3-Day Split Program',
+            id: 1, name: 'Push/Pull/Legs', description: '3-Day Split Program',
             days: [
                 {
                     dayName: 'Push Day',
@@ -96,53 +181,99 @@ function seedDefaults() {
                     ]
                 }
             ]
-        },
-        {
-            id: 2,
-            name: 'Upper/Lower',
-            description: '4-Day Split',
-            days: [
-                {
-                    dayName: 'Upper A',
-                    exercises: [
-                        { name: 'Barbell Bench Press', sets: 4, targetReps: 6 },
-                        { name: 'Barbell Row', sets: 4, targetReps: 6 },
-                        { name: 'Overhead Press', sets: 3, targetReps: 8 },
-                        { name: 'Barbell Curl', sets: 3, targetReps: 10 }
-                    ]
-                },
-                {
-                    dayName: 'Lower A',
-                    exercises: [
-                        { name: 'Barbell Squat', sets: 4, targetReps: 6 },
-                        { name: 'Romanian Deadlift', sets: 3, targetReps: 8 },
-                        { name: 'Leg Extension', sets: 3, targetReps: 12 },
-                        { name: 'Leg Curl', sets: 3, targetReps: 12 }
-                    ]
-                },
-                {
-                    dayName: 'Upper B',
-                    exercises: [
-                        { name: 'Incline Dumbbell Press', sets: 4, targetReps: 8 },
-                        { name: 'Pull-ups', sets: 4, targetReps: 8 },
-                        { name: 'Lateral Raises', sets: 3, targetReps: 15 },
-                        { name: 'Tricep Pushdown', sets: 3, targetReps: 12 }
-                    ]
-                },
-                {
-                    dayName: 'Lower B',
-                    exercises: [
-                        { name: 'Deadlift', sets: 3, targetReps: 5 },
-                        { name: 'Leg Press', sets: 3, targetReps: 10 },
-                        { name: 'Hip Thrust', sets: 3, targetReps: 12 }
-                    ]
-                }
-            ]
         }
     ];
-    save();
+    
+    await setDoc(doc(db, 'users', uid, 'data', 'workout_data'), {
+        workoutPlans: defaultPlans,
+        workoutHistory: [],
+        exerciseLibrary: exerciseLibrary,
+        selectedPlanId: null,
+        lastUpdated: new Date().toISOString()
+    });
 }
 
+async function loadUserData() {
+    if (!currentUser) return;
+    
+    const docRef = doc(db, 'users', currentUser.uid, 'data', 'workout_data');
+    
+    unsubscribeSnapshot = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            workoutPlans = data.workoutPlans || [];
+            workoutHistory = data.workoutHistory || [];
+            exerciseLibrary = data.exerciseLibrary || exerciseLibrary;
+            selectedPlanId = data.selectedPlanId || null;
+            
+            updateLastSyncTime();
+            renderPlans();
+            updateWorkoutHero();
+            renderProgress();
+        } else {
+            initializeUserData(currentUser.uid);
+        }
+    }, (error) => {
+        console.error('Error loading data:', error);
+        showToast('Error loading data');
+    });
+}
+
+async function saveToFirebase() {
+    if (!currentUser) return;
+    
+    try {
+        await updateDoc(doc(db, 'users', currentUser.uid, 'data', 'workout_data'), {
+            workoutPlans,
+            workoutHistory,
+            exerciseLibrary,
+            selectedPlanId,
+            lastUpdated: new Date().toISOString()
+        });
+        updateLastSyncTime();
+    } catch (error) {
+        console.error('Error saving:', error);
+        showToast('Error saving data');
+    }
+}
+
+function updateLastSyncTime() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    document.getElementById('last-sync').textContent = timeStr;
+}
+
+// ═════════════════════════════════════════════
+// PWA
+// ═════════════════════════════════════════════
+let deferredPrompt;
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js')
+            .then(reg => console.log('✅ Service Worker registered'))
+            .catch(err => console.log('❌ SW registration failed:', err));
+    });
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!localStorage.getItem('pwa-installed')) {
+        setTimeout(() => {
+            document.getElementById('install-banner').classList.add('show');
+        }, 3000);
+    }
+});
+
+window.addEventListener('appinstalled', () => {
+    localStorage.setItem('pwa-installed', 'true');
+    document.getElementById('install-banner').classList.remove('show');
+});
+
+// ═════════════════════════════════════════════
+// WORKOUT LOGIC
+// ═════════════════════════════════════════════
 function getNextWorkoutDay(planId) {
     const plan = workoutPlans.find(p => p.id === planId);
     if (!plan) return null;
@@ -175,7 +306,6 @@ function switchView(viewName) {
 }
 
 function updateWorkoutHero() {
-    const heroEl = document.getElementById('workout-hero');
     const titleEl = document.getElementById('today-workout-title');
     const descEl = document.getElementById('today-workout-desc');
     const chooseBtnEl = document.getElementById('choose-plan-btn');
@@ -192,7 +322,7 @@ function updateWorkoutHero() {
     const plan = workoutPlans.find(p => p.id === selectedPlanId);
     if (!plan) {
         selectedPlanId = null;
-        save();
+        saveToFirebase();
         updateWorkoutHero();
         return;
     }
@@ -265,7 +395,7 @@ function renderPlans() {
 
 function selectPlan(planId) {
     selectedPlanId = planId;
-    save();
+    saveToFirebase();
     updateWorkoutHero();
     switchView('workout');
 }
@@ -277,9 +407,7 @@ function deletePlan(index) {
         selectedPlanId = null;
     }
     workoutPlans.splice(index, 1);
-    save();
-    renderPlans();
-    updateWorkoutHero();
+    saveToFirebase();
 }
 
 function startWorkout() {
@@ -412,7 +540,7 @@ function finishWorkout() {
     clearInterval(elapsedInterval);
     currentWorkout.endTime = new Date().toISOString();
     workoutHistory.unshift(currentWorkout);
-    save();
+    saveToFirebase();
     currentWorkout = null;
     document.getElementById('workout-hero').style.display = 'block';
     document.getElementById('active-workout').style.display = 'none';
@@ -464,6 +592,9 @@ function skipRest() {
     document.getElementById('rest-timer').classList.remove('active');
 }
 
+// ═════════════════════════════════════════════
+// PLANS MODAL
+// ═════════════════════════════════════════════
 function showCreatePlan() {
     document.getElementById('modal-title').textContent = 'Create Workout Plan';
     document.getElementById('edit-plan-id').value = '';
@@ -573,7 +704,7 @@ function addExerciseToDayBuilder(dayIndex, prefill = null) {
         if (!exerciseLibrary.includes(exerciseName)) {
             exerciseLibrary.push(exerciseName);
             exerciseLibrary.sort();
-            save();
+            saveToFirebase();
             showToast(`"${exerciseName}" added to library!`);
             
             document.querySelectorAll('datalist').forEach(dl => {
@@ -638,16 +769,17 @@ function savePlan() {
         workoutPlans.push({ id: Date.now(), name, description, days });
     }
     
-    save();
+    saveToFirebase();
     closeModal();
-    renderPlans();
-    updateWorkoutHero();
 }
 
 function closeModal() {
     document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
 }
 
+// ═════════════════════════════════════════════
+// PROGRESS
+// ═════════════════════════════════════════════
 function renderProgress() {
     const total = workoutHistory.length;
     const volume = workoutHistory.reduce((sum, w) =>
@@ -801,6 +933,9 @@ function renderVolumeChart() {
     });
 }
 
+// ═════════════════════════════════════════════
+// UTILITIES
+// ═════════════════════════════════════════════
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -825,10 +960,47 @@ function showToast(message) {
     setTimeout(() => toast.style.opacity = '0', 2500);
 }
 
+// ═════════════════════════════════════════════
+// EVENT LISTENERS
+// ═════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
+    // Auth listeners
+    document.getElementById('show-signup').addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('login-form').style.display = 'none';
+        document.getElementById('signup-form').style.display = 'block';
+    });
+    
+    document.getElementById('show-login').addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('signup-form').style.display = 'none';
+        document.getElementById('login-form').style.display = 'block';
+    });
+    
+    document.getElementById('login-btn').addEventListener('click', () => {
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        handleLogin(email, password);
+    });
+    
+    document.getElementById('signup-btn').addEventListener('click', () => {
+        const email = document.getElementById('signup-email').value;
+        const password = document.getElementById('signup-password').value;
+        const confirm = document.getElementById('signup-password-confirm').value;
+        handleSignup(email, password, confirm);
+    });
+    
+    document.getElementById('google-login-btn').addEventListener('click', handleGoogleAuth);
+    document.getElementById('google-signup-btn').addEventListener('click', handleGoogleAuth);
+    
+    document.getElementById('logout-btn').addEventListener('click', handleLogout);
+    
+    // Navigation
     document.querySelectorAll('.nav-tab').forEach(tab => {
         tab.addEventListener('click', () => switchView(tab.dataset.view));
     });
+    
+    // Install banner
     document.getElementById('install-btn').addEventListener('click', async () => {
         if (!deferredPrompt) return;
         deferredPrompt.prompt();
@@ -837,19 +1009,20 @@ document.addEventListener('DOMContentLoaded', () => {
         deferredPrompt = null;
         document.getElementById('install-banner').classList.remove('show');
     });
+    
     document.getElementById('close-install').addEventListener('click', () => {
         document.getElementById('install-banner').classList.remove('show');
     });
+    
+    // Workout controls
     document.getElementById('start-workout-btn').addEventListener('click', startWorkout);
     document.getElementById('choose-plan-btn').addEventListener('click', () => switchView('plans'));
     document.getElementById('finish-workout-btn').addEventListener('click', finishWorkout);
     document.getElementById('skip-rest-btn').addEventListener('click', skipRest);
+    
+    // Plan controls
     document.getElementById('create-plan-btn').addEventListener('click', showCreatePlan);
     document.getElementById('add-day-btn').addEventListener('click', () => addDayToBuilder());
     document.getElementById('save-plan-btn').addEventListener('click', savePlan);
     document.getElementById('cancel-plan-btn').addEventListener('click', closeModal);
-    load();
-    seedDefaults();
-    renderPlans();
-    updateWorkoutHero();
 });
