@@ -54,7 +54,7 @@ function load() {
     if (plans) workoutPlans = JSON.parse(plans);
     if (history) workoutHistory = JSON.parse(history);
     if (exercises) exerciseLibrary = JSON.parse(exercises);
-    if (selected) selectedPlanId = parseInt(selected);
+    if (selected && selected !== 'null') selectedPlanId = parseInt(selected);
 }
 
 function seedDefaults() {
@@ -212,7 +212,7 @@ function updateWorkoutHero() {
         const daysAgo = Math.floor((Date.now() - date.getTime()) / 86400000);
         const timeStr = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`;
         lastWorkoutEl.innerHTML = `
-            <div style="font-size: 14px; color: var(--text-secondary); margin-top: 12px;">
+            <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 10px;">
                 <strong>Last Workout:</strong> ${escapeHtml(lastWorkout.planName)} - ${escapeHtml(lastWorkout.dayName)} · ${timeStr}
             </div>
         `;
