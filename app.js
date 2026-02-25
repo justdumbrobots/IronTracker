@@ -1,3 +1,4 @@
+import { EXERCISE_DATABASE } from './EXERCISE_DATABASE.js';
 import { auth, db } from './firebase-config.js';
 import { 
     signInWithEmailAndPassword, 
@@ -25,14 +26,9 @@ let currentWorkout = null;
 let restInterval = null;
 let elapsedInterval = null;
 let selectedPlanId = null;
-let exerciseLibrary = [
-    'Barbell Bench Press', 'Incline Dumbbell Press', 'Chest Fly', 'Push-ups',
-    'Barbell Squat', 'Romanian Deadlift', 'Leg Press', 'Leg Curl', 'Leg Extension',
-    'Barbell Row', 'Pull-ups', 'Lat Pulldown', 'Dumbbell Row', 'Face Pulls',
-    'Overhead Press', 'Lateral Raises', 'Front Raises', 'Shrugs',
-    'Barbell Curl', 'Hammer Curl', 'Tricep Pushdown', 'Skull Crushers', 'Dips',
-    'Plank', 'Russian Twists', 'Hanging Leg Raises', 'Deadlift', 'Hip Thrust'
-];
+
+// Load all 203 exercises from database
+let exerciseLibrary = EXERCISE_DATABASE.map(ex => ex.name);
 
 let currentUser = null;
 let unsubscribeSnapshot = null;
@@ -155,29 +151,29 @@ async function initializeUserData(uid) {
                     exercises: [
                         { name: 'Barbell Bench Press', sets: 4, targetReps: 8 },
                         { name: 'Incline Dumbbell Press', sets: 3, targetReps: 10 },
-                        { name: 'Overhead Press', sets: 3, targetReps: 8 },
-                        { name: 'Lateral Raises', sets: 3, targetReps: 15 },
-                        { name: 'Tricep Pushdown', sets: 3, targetReps: 12 }
+                        { name: 'Military Press (AKA Overhead Press)', sets: 3, targetReps: 8 },
+                        { name: 'Lateral Raise Machine', sets: 3, targetReps: 15 },
+                        { name: 'Rope Tricep Extension', sets: 3, targetReps: 12 }
                     ]
                 },
                 {
                     dayName: 'Pull Day',
                     exercises: [
-                        { name: 'Pull-ups', sets: 4, targetReps: 8 },
-                        { name: 'Barbell Row', sets: 4, targetReps: 8 },
-                        { name: 'Lat Pulldown', sets: 3, targetReps: 10 },
-                        { name: 'Face Pulls', sets: 3, targetReps: 15 },
-                        { name: 'Barbell Curl', sets: 3, targetReps: 10 }
+                        { name: 'Pull Up', sets: 4, targetReps: 8 },
+                        { name: 'Bent Over Row', sets: 4, targetReps: 8 },
+                        { name: 'Lat Pull Down', sets: 3, targetReps: 10 },
+                        { name: 'Cable Face Pull', sets: 3, targetReps: 15 },
+                        { name: 'Standing Barbell Curl', sets: 3, targetReps: 10 }
                     ]
                 },
                 {
                     dayName: 'Leg Day',
                     exercises: [
-                        { name: 'Barbell Squat', sets: 4, targetReps: 8 },
-                        { name: 'Romanian Deadlift', sets: 4, targetReps: 8 },
+                        { name: 'Barbell Back Squat', sets: 4, targetReps: 8 },
+                        { name: 'Romanian Deadlift (AKA RDL)', sets: 4, targetReps: 8 },
                         { name: 'Leg Press', sets: 3, targetReps: 12 },
                         { name: 'Leg Curl', sets: 3, targetReps: 12 },
-                        { name: 'Hip Thrust', sets: 3, targetReps: 12 }
+                        { name: 'Barbell Hip Thrust', sets: 3, targetReps: 12 }
                     ]
                 }
             ]
@@ -203,7 +199,6 @@ async function loadUserData() {
             const data = docSnap.data();
             workoutPlans = data.workoutPlans || [];
             workoutHistory = data.workoutHistory || [];
-            exerciseLibrary = data.exerciseLibrary || exerciseLibrary;
             selectedPlanId = data.selectedPlanId || null;
             
             updateLastSyncTime();
@@ -667,17 +662,13 @@ function addExerciseToDayBuilder(dayIndex, prefill = null) {
             <div style="display: flex; gap: 8px; margin-bottom: 8px;">
                 <input type="text" class="form-input exercise-name-input" 
                        data-day="${dayIndex}" data-ex="${exIndex}"
-                       placeholder="Exercise name" 
-                       list="exercise-datalist-${dayIndex}-${exIndex}"
+                       placeholder="Search exercises..." 
                        value="${prefill ? escapeHtml(prefill.name) : ''}" 
                        style="flex: 1;">
-                <button class="btn btn-secondary btn-small create-exercise-btn" 
+                <button class="btn btn-secondary btn-small browse-exercise-btn" 
                         data-day="${dayIndex}" data-ex="${exIndex}" 
-                        style="white-space: nowrap;">New Exercise</button>
+                        style="white-space: nowrap;">Browse</button>
             </div>
-            <datalist id="exercise-datalist-${dayIndex}-${exIndex}">
-                ${exerciseLibrary.map(ex => `<option value="${escapeHtml(ex)}">`).join('')}
-            </datalist>
             <div style="display: flex; gap: 8px;">
                 <input type="number" class="form-input" 
                        data-day="${dayIndex}" data-ex="${exIndex}" data-field="sets"
@@ -694,25 +685,125 @@ function addExerciseToDayBuilder(dayIndex, prefill = null) {
     
     item.querySelector('.remove-exercise-btn').addEventListener('click', () => item.remove());
     
-    item.querySelector('.create-exercise-btn').addEventListener('click', () => {
-        const input = item.querySelector('.exercise-name-input');
-        const exerciseName = input.value.trim();
-        if (!exerciseName) {
-            alert('Enter an exercise name first');
+    // Browse exercises with filtering
+    item.querySelector('.browse-exercise-btn').addEventListener('click', () => {
+        showExerciseBrowser(dayIndex, exIndex);
+    });
+}
+
+function showExerciseBrowser(dayIndex, exIndex) {
+    // Create modal overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'modal active';
+    overlay.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">Select Exercise</div>
+            
+            <div style="margin-bottom: 20px;">
+                <input type="text" class="form-input" id="exercise-search" 
+                       placeholder="🔍 Search exercises..." 
+                       style="margin-bottom: 12px;">
+                
+                <div style="display: flex; gap: 8px;">
+                    <select class="form-input" id="muscle-filter" style="flex: 1;">
+                        <option value="">All Muscles</option>
+                        <option value="Abs">Abs</option>
+                        <option value="Biceps">Biceps</option>
+                        <option value="Calves">Calves</option>
+                        <option value="Chest">Chest</option>
+                        <option value="Forearms">Forearms</option>
+                        <option value="Glutes">Glutes</option>
+                        <option value="Hamstrings">Hamstrings</option>
+                        <option value="Lats">Lats</option>
+                        <option value="Lower Back">Lower Back</option>
+                        <option value="Obliques">Obliques</option>
+                        <option value="Quads">Quads</option>
+                        <option value="Shoulders">Shoulders</option>
+                        <option value="Traps">Traps</option>
+                        <option value="Triceps">Triceps</option>
+                        <option value="Upper Back">Upper Back</option>
+                    </select>
+                    
+                    <select class="form-input" id="force-filter" style="flex: 1;">
+                        <option value="">All Force Types</option>
+                        <option value="Push">Push</option>
+                        <option value="Pull">Pull</option>
+                        <option value="Hinge">Hinge</option>
+                        <option value="Static">Static</option>
+                        <option value="Isometric">Isometric</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="exercise-results" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px;">
+                <!-- Results will be inserted here -->
+            </div>
+            
+            <button class="btn btn-secondary" id="close-browser">Close</button>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Filter and render exercises
+    function filterExercises() {
+        const search = document.getElementById('exercise-search').value.toLowerCase();
+        const muscleFilter = document.getElementById('muscle-filter').value;
+        const forceFilter = document.getElementById('force-filter').value;
+        
+        let filtered = EXERCISE_DATABASE.filter(ex => {
+            const matchesSearch = ex.name.toLowerCase().includes(search);
+            const matchesMuscle = !muscleFilter || ex.muscle === muscleFilter;
+            const matchesForce = !forceFilter || ex.force === forceFilter;
+            return matchesSearch && matchesMuscle && matchesForce;
+        });
+        
+        const resultsDiv = document.getElementById('exercise-results');
+        
+        if (filtered.length === 0) {
+            resultsDiv.innerHTML = '<div class="empty-state"><p>No exercises found</p></div>';
             return;
         }
-        if (!exerciseLibrary.includes(exerciseName)) {
-            exerciseLibrary.push(exerciseName);
-            exerciseLibrary.sort();
-            saveToFirebase();
-            showToast(`"${exerciseName}" added to library!`);
-            
-            document.querySelectorAll('datalist').forEach(dl => {
-                dl.innerHTML = exerciseLibrary.map(ex => `<option value="${escapeHtml(ex)}">`).join('');
+        
+        resultsDiv.innerHTML = filtered.slice(0, 50).map(ex => `
+            <div class="exercise-result-item" data-exercise="${escapeHtml(ex.name)}">
+                <div style="font-weight: 600; margin-bottom: 4px;">${escapeHtml(ex.name)}</div>
+                <div style="font-size: 12px; color: var(--text-secondary);">
+                    <span style="background: var(--bg-hover); padding: 2px 8px; border-radius: 4px; margin-right: 4px;">
+                        💪 ${ex.muscle}
+                    </span>
+                    <span style="background: var(--bg-hover); padding: 2px 8px; border-radius: 4px; margin-right: 4px;">
+                        🔨 ${ex.equipment}
+                    </span>
+                    <span style="background: var(--bg-hover); padding: 2px 8px; border-radius: 4px;">
+                        ⚡ ${ex.force}
+                    </span>
+                </div>
+            </div>
+        `).join('');
+        
+        // Add click handlers
+        document.querySelectorAll('.exercise-result-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const exerciseName = item.dataset.exercise;
+                const input = document.querySelector(`[data-day="${dayIndex}"][data-ex="${exIndex}"].exercise-name-input`);
+                if (input) input.value = exerciseName;
+                document.body.removeChild(overlay);
             });
-        } else {
-            showToast('Exercise already in library');
-        }
+        });
+    }
+    
+    // Initial render
+    filterExercises();
+    
+    // Event listeners for filtering
+    document.getElementById('exercise-search').addEventListener('input', filterExercises);
+    document.getElementById('muscle-filter').addEventListener('change', filterExercises);
+    document.getElementById('force-filter').addEventListener('change', filterExercises);
+    
+    // Close button
+    document.getElementById('close-browser').addEventListener('click', () => {
+        document.body.removeChild(overlay);
     });
 }
 
