@@ -28,4 +28,227 @@
     <!-- Auth Screen -->
     <div id="auth-screen" class="auth-screen" style="display: none;">
         <div class="auth-container">
-            <div class="logo" style="font-size: 48px; margin-bottom: 10px; text-align: cen
+            <div class="logo" style="font-size: 48px; margin-bottom: 10px; text-align: center;">Iron Track</div>
+            <p style="color: var(--text-secondary); text-align: center; margin-bottom: 40px;">Track Your Gains, Anywhere</p>
+            
+            <div id="login-form" class="auth-form">
+                <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 28px; margin-bottom: 24px;">Login</h2>
+                
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="login-email" placeholder="your@email.com">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="login-password" placeholder="••••••••">
+                </div>
+                
+                <button class="btn" id="login-btn" style="width: 100%; margin-bottom: 12px;">Login</button>
+                <button class="btn btn-secondary" id="google-login-btn" style="width: 100%; margin-bottom: 20px;">
+                    <span style="margin-right: 8px;">🔐</span> Sign in with Google
+                </button>
+                
+                <p style="text-align: center; color: var(--text-secondary); font-size: 14px;">
+                    Don't have an account? 
+                    <a href="#" id="show-signup" style="color: var(--primary); text-decoration: none;">Sign up</a>
+                </p>
+            </div>
+
+            <div id="signup-form" class="auth-form" style="display: none;">
+                <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 28px; margin-bottom: 24px;">Create Account</h2>
+                
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-input" id="signup-email" placeholder="your@email.com">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="signup-password" placeholder="••••••••">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="password" class="form-input" id="signup-password-confirm" placeholder="••••••••">
+                </div>
+                
+                <button class="btn" id="signup-btn" style="width: 100%; margin-bottom: 12px;">Create Account</button>
+                <button class="btn btn-secondary" id="google-signup-btn" style="width: 100%; margin-bottom: 20px;">
+                    <span style="margin-right: 8px;">🔐</span> Sign up with Google
+                </button>
+                
+                <p style="text-align: center; color: var(--text-secondary); font-size: 14px;">
+                    Already have an account? 
+                    <a href="#" id="show-login" style="color: var(--primary); text-decoration: none;">Login</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-app" style="display: none;">
+        <div id="install-banner" class="install-banner">
+            <div class="install-content">
+                <div class="install-icon">📱</div>
+                <div class="install-text">
+                    <div class="install-title">Install Iron Track</div>
+                    <div class="install-subtitle">Get the full app experience</div>
+                </div>
+                <button class="btn btn-small" id="install-btn">Install</button>
+                <button class="btn-close" id="close-install">✕</button>
+            </div>
+        </div>
+
+        <header>
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo">Iron Track</div>
+                    <nav class="nav-tabs">
+                        <button class="nav-tab active" data-view="workout">Workout</button>
+                        <button class="nav-tab" data-view="plans">Plans</button>
+                        <button class="nav-tab" data-view="progress">Progress</button>
+                        <button class="nav-tab" data-view="profile">Profile</button>
+                    </nav>
+                </div>
+            </div>
+        </header>
+
+        <div class="container">
+            <div id="workout-view" class="view active">
+                <div class="hero-workout" id="workout-hero">
+                    <h2 id="today-workout-title">Today's Workout</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: 20px;" id="today-workout-desc">Push Day A - Upper Body Strength</p>
+                    <div id="last-workout-info"></div>
+                    <div style="margin-top: 20px;">
+                        <button class="btn" id="start-workout-btn">▶ Start Workout</button>
+                        <button class="btn btn-secondary" style="margin-left: 16px;" id="choose-plan-btn">Choose Plan</button>
+                    </div>
+                </div>
+
+                <div id="active-workout" style="display: none;">
+                    <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                        <div>
+                            <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 32px; font-weight: 800; text-transform: uppercase;" id="active-workout-name"></h2>
+                            <div id="workout-elapsed" style="color: var(--text-secondary); font-size: 14px; margin-top: 4px;"></div>
+                        </div>
+                        <button class="btn btn-small" id="finish-workout-btn">Finish Workout</button>
+                    </div>
+                    <div id="exercise-container"></div>
+                    <div class="rest-timer" id="rest-timer">
+                        <div class="timer-display" id="timer-display">2:00</div>
+                        <div class="timer-label">Rest Period</div>
+                        <button class="btn btn-small" id="skip-rest-btn" style="margin-top: 16px;">Skip Rest</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="plans-view" class="view">
+                <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase;">Workout Plans</h2>
+                    <button class="btn btn-small" id="create-plan-btn">+ New Plan</button>
+                </div>
+                <div class="workout-plans-grid" id="plans-grid"></div>
+            </div>
+
+            <div id="progress-view" class="view">
+                <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; margin-bottom: 30px;">Your Progress</h2>
+                <div class="stat-cards">
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-workouts">0</div>
+                        <div class="stat-label">Total Workouts</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-volume">0</div>
+                        <div class="stat-label">Total Volume (lbs)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="weekly-workouts">0</div>
+                        <div class="stat-label">This Week</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="personal-records">0</div>
+                        <div class="stat-label">Personal Records</div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-header"><div class="chart-title">Volume Per Workout</div></div>
+                    <canvas id="volume-chart" height="200"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-header"><div class="chart-title">Personal Records</div></div>
+                    <div id="pr-list">
+                        <div class="empty-state"><div class="empty-state-icon">🏆</div><p>Complete workouts to set PRs</p></div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-header"><div class="chart-title">Workout History</div></div>
+                    <div id="history-list">
+                        <div class="empty-state"><div class="empty-state-icon">📋</div><p>No workouts logged yet</p></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="profile-view" class="view">
+                <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; margin-bottom: 30px;">Profile</h2>
+                
+                <div class="chart-container">
+                    <div style="text-align: center; padding: 40px 20px;">
+                        <div style="width: 80px; height: 80px; background: var(--primary); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 800; color: white;" id="user-avatar"></div>
+                        <h3 style="font-size: 24px; margin-bottom: 8px;" id="user-email"></h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 30px;">Member since <span id="user-since"></span></p>
+                        <button class="btn btn-secondary" id="logout-btn">Logout</button>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <h3 style="font-size: 20px; margin-bottom: 16px;">Data Sync</h3>
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border);">
+                        <span>Cloud Sync</span>
+                        <span style="color: var(--success);">✓ Enabled</span>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0;">
+                        <span>Last Synced</span>
+                        <span id="last-sync" style="color: var(--text-secondary);">Just now</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="create-plan-modal" class="modal">
+            <div class="modal-content" style="max-width: 700px;">
+                <div class="modal-header" id="modal-title">Create Workout Plan</div>
+                <input type="hidden" id="edit-plan-id">
+                
+                <div class="form-group">
+                    <label class="form-label">Plan Name</label>
+                    <input type="text" class="form-input" id="plan-name" placeholder="e.g., Push/Pull/Legs">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-input" id="plan-description" placeholder="e.g., 3-Day Split Program">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Workout Days</label>
+                    <div id="days-builder"></div>
+                    <button class="btn btn-secondary btn-small" id="add-day-btn" style="margin-top: 12px;">+ Add Day</button>
+                </div>
+                
+                <div style="display: flex; gap: 12px; margin-top: 30px;">
+                    <button class="btn" id="save-plan-btn">Save Plan</button>
+                    <button class="btn btn-secondary" id="cancel-plan-btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module" src="firebase-config.js"></script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
