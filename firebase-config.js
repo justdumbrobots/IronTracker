@@ -12,8 +12,8 @@ const firebaseConfig = {
   projectId: "iron-tracker-3f59f",
   storageBucket: "iron-tracker-3f59f.firebasestorage.app",
   messagingSenderId: "990770977639",
-  appId: "1:990770977639:web:aab9b63eac0e3774b02dc2",
-  measurementId: "G-W8VVS1ST8V"
+  appId: "1:990770977639:web:934961d8b5abac53b02dc2",
+  measurementId: "G-K6Z38M3ZBT"
 };
 
 // Initialize Firebase
