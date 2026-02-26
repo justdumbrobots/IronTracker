@@ -217,7 +217,7 @@ header {
     background: transparent;
     border: 2px solid var(--border);
     color: var(--text-secondary);
-    padding: 12px 24px;
+    padding: 10px 18px;
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 14px;
     font-weight: 700;
@@ -1867,12 +1867,20 @@ select.form-input:focus {
 
     .nav-tabs {
         width: 100%;
-        justify-content: space-between;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;   /* Firefox */
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        gap: 2px;
     }
 
+    .nav-tabs::-webkit-scrollbar { display: none; }  /* Chrome / Safari */
+
     .nav-tab {
-        flex: 1;
-        padding: 10px 8px;
-        font-size: 11px;
+        flex: 0 0 auto;        /* don't shrink — let the row scroll instead */
+        white-space: nowrap;
+        padding: 10px 14px;
+        font-size: 12px;
     }
 }
