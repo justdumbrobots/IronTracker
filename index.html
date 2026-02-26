@@ -107,7 +107,8 @@
                     <div class="logo">IRON TRACK</div>
                     <nav class="nav-tabs">
                         <button class="nav-tab active" data-view="workout">WORKOUT</button>
-                        <button class="nav-tab" data-view="plans">PLANS</button>
+                        <button class="nav-tab" data-view="plans">MY PLANS</button>
+                        <button class="nav-tab" data-view="library">LIBRARY</button>
                         <button class="nav-tab" data-view="progress">PROGRESS</button>
                         <button class="nav-tab" data-view="profile">PROFILE</button>
                     </nav>
@@ -152,10 +153,44 @@
             <!-- PLANS VIEW -->
             <div id="plans-view" class="view">
                 <div style="margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center;">
-                    <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">WORKOUT PLANS</h2>
+                    <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">MY WORKOUT PLANS</h2>
                     <button class="btn btn-small" id="create-plan-btn">+ NEW PLAN</button>
                 </div>
                 <div class="workout-plans-grid" id="plans-grid"></div>
+            </div>
+
+            <!-- LIBRARY VIEW -->
+            <div id="library-view" class="view">
+                <div style="margin-bottom: 30px;">
+                    <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px;">PLAN LIBRARY</h2>
+                    <p style="color: var(--text-secondary); font-size: 14px;">PROFESSIONALLY DESIGNED WORKOUT PROGRAMS</p>
+                </div>
+
+                <!-- Filters -->
+                <div style="display: flex; gap: 12px; margin-bottom: 30px; flex-wrap: wrap;">
+                    <select class="form-input" id="library-difficulty-filter" style="max-width: 200px;">
+                        <option value="">ALL LEVELS</option>
+                        <option value="beginner">BEGINNER</option>
+                        <option value="intermediate">INTERMEDIATE</option>
+                        <option value="advanced">ADVANCED</option>
+                        <option value="specialized">SPECIALIZED</option>
+                    </select>
+                    
+                    <select class="form-input" id="library-days-filter" style="max-width: 200px;">
+                        <option value="">ALL SCHEDULES</option>
+                        <option value="3">3 DAYS/WEEK</option>
+                        <option value="4">4 DAYS/WEEK</option>
+                        <option value="5">5 DAYS/WEEK</option>
+                        <option value="6">6 DAYS/WEEK</option>
+                    </select>
+
+                    <input type="text" class="form-input" id="library-search" placeholder="🔍 SEARCH PLANS..." style="flex: 1; min-width: 200px;">
+                </div>
+
+                <!-- Library Grid -->
+                <div class="workout-plans-grid" id="library-grid">
+                    <div class="empty-state"><div class="empty-state-icon">📚</div><p>LOADING PLAN LIBRARY...</p></div>
+                </div>
             </div>
 
             <!-- PROGRESS VIEW -->
@@ -405,6 +440,43 @@
                 <div style="display: flex; gap: 12px; margin-top: 30px;">
                     <button class="btn" id="save-timer-btn">SAVE</button>
                     <button class="btn btn-secondary" id="cancel-timer-btn">CANCEL</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plan Detail Modal -->
+        <div id="plan-detail-modal" class="modal">
+            <div class="modal-content" style="max-width: 700px;">
+                <div class="modal-header" id="plan-detail-name">PLAN NAME</div>
+                
+                <div style="margin-bottom: 24px;">
+                    <div style="display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+                        <div style="background: var(--bg-hover); padding: 8px 16px; border-left: 3px solid var(--primary);">
+                            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; font-family: 'Barlow Condensed', sans-serif;">DIFFICULTY</div>
+                            <div style="font-weight: 700; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;" id="plan-detail-difficulty">BEGINNER</div>
+                        </div>
+                        <div style="background: var(--bg-hover); padding: 8px 16px;">
+                            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; font-family: 'Barlow Condensed', sans-serif;">SCHEDULE</div>
+                            <div style="font-weight: 700; font-family: 'Barlow Condensed', sans-serif;" id="plan-detail-schedule">3 DAYS/WEEK</div>
+                        </div>
+                        <div style="background: var(--bg-hover); padding: 8px 16px;">
+                            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; font-family: 'Barlow Condensed', sans-serif;">TOTAL</div>
+                            <div style="font-weight: 700; font-family: 'Barlow Condensed', sans-serif;" id="plan-detail-total">15 EXERCISES</div>
+                        </div>
+                    </div>
+                    
+                    <p style="color: var(--text-secondary); margin-bottom: 16px;" id="plan-detail-description">Plan description</p>
+                    
+                    <div id="plan-detail-tags" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;"></div>
+                </div>
+
+                <div style="max-height: 400px; overflow-y: auto; margin-bottom: 24px;">
+                    <div id="plan-detail-days"></div>
+                </div>
+                
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn" id="add-plan-to-account-btn">➕ ADD TO MY PLANS</button>
+                    <button class="btn btn-secondary" id="close-plan-detail-btn">CLOSE</button>
                 </div>
             </div>
         </div>
