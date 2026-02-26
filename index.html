@@ -123,6 +123,10 @@
                     <h2 id="today-workout-title">TODAY'S WORKOUT</h2>
                     <p style="color: var(--text-secondary); margin-bottom: 20px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: 1px;" id="today-workout-desc">PUSH DAY A - UPPER BODY STRENGTH</p>
                     <div id="last-workout-info"></div>
+                    <div id="inactive-clock" class="inactive-clock" style="display: none;">
+                        <div class="inactive-clock-time" id="inactive-clock-time">0D 0H</div>
+                        <div class="inactive-clock-label">TIME SINCE LAST PUMP</div>
+                    </div>
                     <div style="margin-top: 20px;">
                         <button class="btn" id="start-workout-btn">▶ START WORKOUT</button>
                         <button class="btn btn-secondary" style="margin-left: 16px;" id="choose-plan-btn">CHOOSE PLAN</button>
@@ -145,6 +149,15 @@
                             <button class="btn btn-small" id="timer-minus-15">-15s</button>
                             <button class="btn btn-small" id="skip-rest-btn">SKIP REST</button>
                             <button class="btn btn-small" id="timer-plus-15">+15s</button>
+                        </div>
+                    </div>
+
+                    <div class="stopwatch-panel" id="stopwatch-panel">
+                        <div class="stopwatch-display" id="stopwatch-display">0:00</div>
+                        <div class="timer-label">STOPWATCH &middot; AMRAP / EMOM</div>
+                        <div class="timer-controls">
+                            <button class="btn btn-small" id="stopwatch-start-btn">START</button>
+                            <button class="btn btn-secondary btn-small" id="stopwatch-reset-btn">RESET</button>
                         </div>
                     </div>
                 </div>

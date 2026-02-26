@@ -55,6 +55,10 @@ let currentPlanDetail = null;
 let currentUser = null;
 let unsubscribeSnapshot = null;
 
+// Stopwatch state (AMRAP / EMOM)
+let stopwatchSeconds = 0;
+let stopwatchInterval = null;
+
 // ═════════════════════════════════════════════
 // THEME MANAGEMENT
 // ═════════════════════════════════════════════
@@ -973,6 +977,31 @@ function getLastCompletedWorkout() {
     return workoutHistory[0];
 }
 
+function updateInactiveClock() {
+    const clockEl = document.getElementById('inactive-clock');
+    const timeEl = document.getElementById('inactive-clock-time');
+    if (!clockEl || !timeEl) return;
+
+    if (!workoutHistory.length) {
+        clockEl.style.display = 'none';
+        return;
+    }
+
+    const last = workoutHistory[0];
+    const diffMs = Date.now() - new Date(last.date).getTime();
+    const totalHours = Math.floor(diffMs / 3600000);
+    const days = Math.floor(totalHours / 24);
+    const hours = totalHours % 24;
+
+    let urgency = 'green';
+    if (totalHours >= 72) urgency = 'red';
+    else if (totalHours >= 48) urgency = 'yellow';
+
+    timeEl.textContent = days > 0 ? `${days}D ${hours}H` : `${hours}H`;
+    clockEl.dataset.urgency = urgency;
+    clockEl.style.display = 'block';
+}
+
 function switchView(viewName) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -1033,6 +1062,8 @@ function updateWorkoutHero() {
     } else if (lastWorkoutEl) {
         lastWorkoutEl.style.display = 'none';
     }
+
+    updateInactiveClock();
 }
 
 function renderPlans() {
@@ -1123,7 +1154,11 @@ function startWorkout() {
         exercises: nextWorkout.day.exercises.map(ex => ({
             name: ex.name,
             targetReps: ex.targetReps,
-            sets: Array.from({ length: ex.sets }, () => ({ weight: '', reps: '', completed: false }))
+            sets: Array.from({ length: ex.sets }, (_, i) => {
+                const lastSets = getLastRawSets(ex.name);
+                const prev = lastSets?.[i];
+                return { weight: prev?.weight || '', reps: prev?.reps || '', completed: false };
+            })
         }))
     };
     
@@ -1226,6 +1261,9 @@ function finishWorkout() {
     }
     clearInterval(restInterval);
     clearInterval(elapsedInterval);
+    clearInterval(stopwatchInterval);
+    stopwatchInterval = null;
+    stopwatchSeconds = 0;
     currentWorkout.endTime = new Date().toISOString();
     workoutHistory.unshift(currentWorkout);
     saveToFirebase();
@@ -1251,20 +1289,36 @@ function getLastRawSets(exerciseName) {
     return null;
 }
 
+function playBeep() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.5);
+    } catch (e) { /* AudioContext not available */ }
+}
+
 function startRestTimer(seconds) {
     clearInterval(restInterval);
     const timerEl = document.getElementById('rest-timer');
     const displayEl = document.getElementById('timer-display');
     timerEl.classList.add('active');
     currentRestSeconds = seconds;
-    
+
     const updateDisplay = () => {
         const mins = Math.floor(currentRestSeconds / 60);
         const secs = currentRestSeconds % 60;
         displayEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
     };
     updateDisplay();
-    
+
     restInterval = setInterval(() => {
         currentRestSeconds--;
         updateDisplay();
@@ -1272,6 +1326,7 @@ function startRestTimer(seconds) {
             clearInterval(restInterval);
             timerEl.classList.remove('active');
             if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
+            playBeep();
             showToast('REST COMPLETE — NEXT SET!');
         }
     }, 1000);
@@ -1287,6 +1342,38 @@ function adjustRestTimer(seconds) {
     const mins = Math.floor(currentRestSeconds / 60);
     const secs = currentRestSeconds % 60;
     document.getElementById('timer-display').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// ═════════════════════════════════════════════
+// STOPWATCH (AMRAP / EMOM)
+// ═════════════════════════════════════════════
+function updateStopwatchDisplay() {
+    const mins = Math.floor(stopwatchSeconds / 60);
+    const secs = stopwatchSeconds % 60;
+    const el = document.getElementById('stopwatch-display');
+    if (el) el.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function toggleStopwatch() {
+    if (stopwatchInterval) {
+        clearInterval(stopwatchInterval);
+        stopwatchInterval = null;
+        document.getElementById('stopwatch-start-btn').textContent = 'START';
+    } else {
+        stopwatchInterval = setInterval(() => {
+            stopwatchSeconds++;
+            updateStopwatchDisplay();
+        }, 1000);
+        document.getElementById('stopwatch-start-btn').textContent = 'PAUSE';
+    }
+}
+
+function resetStopwatch() {
+    clearInterval(stopwatchInterval);
+    stopwatchInterval = null;
+    stopwatchSeconds = 0;
+    updateStopwatchDisplay();
+    document.getElementById('stopwatch-start-btn').textContent = 'START';
 }
 
 // ═════════════════════════════════════════════
@@ -1820,6 +1907,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('skip-rest-btn').addEventListener('click', skipRest);
     document.getElementById('timer-plus-15').addEventListener('click', () => adjustRestTimer(15));
     document.getElementById('timer-minus-15').addEventListener('click', () => adjustRestTimer(-15));
+    document.getElementById('stopwatch-start-btn').addEventListener('click', toggleStopwatch);
+    document.getElementById('stopwatch-reset-btn').addEventListener('click', resetStopwatch);
     
     // Plan controls
     document.getElementById('create-plan-btn').addEventListener('click', showCreatePlan);
