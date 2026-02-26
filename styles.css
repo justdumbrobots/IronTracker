@@ -1523,6 +1523,20 @@ select.form-input:focus {
     cursor: default;
 }
 
+/* ── Community / forum grid containers ───────── */
+#community-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+    margin-bottom: 40px;
+}
+
+#forum-posts-list {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 40px;
+}
+
 /* ── Community sub-tabs (PLANS | FORUM) ─────── */
 .community-sub-tabs {
     display: flex;
@@ -1791,6 +1805,7 @@ select.form-input:focus {
     .success-wall-feed { max-height: 220px; }
     .community-tab { padding: 8px 14px; font-size: 14px; }
     .comments-feed { max-height: 180px; }
+    #community-grid { grid-template-columns: 1fr; }
 }
 
 /* ═══════════════════════════════════════════

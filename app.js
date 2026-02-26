@@ -83,6 +83,7 @@ let myForumLikes = new Set();        // Set of postIds the current user has like
 let currentForumPost = null;
 let unsubscribeForumPosts = null;
 let unsubscribePostReplies = null;
+let activeCommunityPane = 'plans';   // Remembered across main-nav tab switches
 
 // ═════════════════════════════════════════════
 // THEME MANAGEMENT
@@ -1040,7 +1041,7 @@ function switchView(viewName) {
         if (libraryPlans.length === 0) loadLibraryPlans();
         else renderLibraryPlans();
     }
-    if (viewName === 'community') switchCommunityPane('plans');
+    if (viewName === 'community') switchCommunityPane(activeCommunityPane);
     if (viewName === 'progress') renderProgress();
     if (viewName === 'workout') updateWorkoutHero();
 }
@@ -1975,7 +1976,10 @@ function renderCommunityPlans() {
     // 'newest' is already the default order from the query
 
     if (filtered.length === 0) {
-        grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><p>NO PLANS MATCH</p></div>';
+        const msg = communityPlans.length === 0
+            ? 'NO COMMUNITY PLANS YET — BE THE FIRST TO SHARE ONE!'
+            : 'NO PLANS MATCH YOUR FILTERS';
+        grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏋️</div><p>${msg}</p></div>`;
         return;
     }
 
@@ -2319,12 +2323,14 @@ async function sendKudos(prId, toUid) {
 // COMMUNITY PANE SWITCHING (PLANS | FORUM)
 // ─────────────────────────────────────────────
 function switchCommunityPane(pane) {
+    activeCommunityPane = pane;
+
     document.querySelectorAll('.community-tab').forEach(t => {
         t.classList.toggle('active', t.dataset.pane === pane);
     });
 
-    const plansPane = document.getElementById('community-plans-pane');
-    const forumPane = document.getElementById('community-forum-pane');
+    const plansPane   = document.getElementById('community-plans-pane');
+    const forumPane   = document.getElementById('community-forum-pane');
     const sharePlanBtn = document.getElementById('share-plan-btn');
     const newPostBtn   = document.getElementById('new-post-btn');
 
@@ -2490,7 +2496,11 @@ async function loadForum() {
         } catch (e) { console.error('Forum likes load error:', e); }
     }
 
-    if (unsubscribeForumPosts) return; // Already listening
+    // Listener already running — just re-render existing data (no need to re-subscribe)
+    if (unsubscribeForumPosts) {
+        renderForumPosts();
+        return;
+    }
 
     document.getElementById('forum-posts-list').innerHTML =
         '<div class="empty-state"><div class="empty-state-icon">💬</div><p>LOADING...</p></div>';
@@ -2523,7 +2533,10 @@ function renderForumPosts() {
     });
 
     if (filtered.length === 0) {
-        list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💬</div><p>NO POSTS YET — START THE CONVERSATION!</p></div>';
+        const msg = forumPosts.length === 0
+            ? 'NO POSTS YET — START THE CONVERSATION!'
+            : 'NO POSTS MATCH YOUR FILTERS';
+        list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">💬</div><p>${msg}</p></div>`;
         return;
     }
 
@@ -2689,7 +2702,6 @@ async function togglePostLike(postId) {
 
 async function deleteForumPost(postId) {
     if (!currentUser) return;
-    if (!confirm('DELETE THIS POST?')) return;
     try {
         await deleteDoc(doc(db, 'forum_posts', postId));
         showToast('POST DELETED', 'info');
