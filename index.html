@@ -109,6 +109,7 @@
                         <button class="nav-tab active" data-view="workout">WORKOUT</button>
                         <button class="nav-tab" data-view="plans">MY PLANS</button>
                         <button class="nav-tab" data-view="library">LIBRARY</button>
+                        <button class="nav-tab" data-view="community">COMMUNITY</button>
                         <button class="nav-tab" data-view="progress">PROGRESS</button>
                         <button class="nav-tab" data-view="profile">PROFILE</button>
                     </nav>
@@ -123,6 +124,10 @@
                     <h2 id="today-workout-title">TODAY'S WORKOUT</h2>
                     <p style="color: var(--text-secondary); margin-bottom: 20px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: 1px;" id="today-workout-desc">PUSH DAY A - UPPER BODY STRENGTH</p>
                     <div id="last-workout-info"></div>
+                    <div id="inactive-clock" class="inactive-clock" style="display: none;">
+                        <div class="inactive-clock-time" id="inactive-clock-time">0D 0H</div>
+                        <div class="inactive-clock-label">TIME SINCE LAST PUMP</div>
+                    </div>
                     <div style="margin-top: 20px;">
                         <button class="btn" id="start-workout-btn">▶ START WORKOUT</button>
                         <button class="btn btn-secondary" style="margin-left: 16px;" id="choose-plan-btn">CHOOSE PLAN</button>
@@ -145,6 +150,15 @@
                             <button class="btn btn-small" id="timer-minus-15">-15s</button>
                             <button class="btn btn-small" id="skip-rest-btn">SKIP REST</button>
                             <button class="btn btn-small" id="timer-plus-15">+15s</button>
+                        </div>
+                    </div>
+
+                    <div class="stopwatch-panel" id="stopwatch-panel">
+                        <div class="stopwatch-display" id="stopwatch-display">0:00</div>
+                        <div class="timer-label">STOPWATCH &middot; AMRAP / EMOM</div>
+                        <div class="timer-controls">
+                            <button class="btn btn-small" id="stopwatch-start-btn">START</button>
+                            <button class="btn btn-secondary btn-small" id="stopwatch-reset-btn">RESET</button>
                         </div>
                     </div>
                 </div>
@@ -190,6 +204,76 @@
                 <!-- Library Grid -->
                 <div class="workout-plans-grid" id="library-grid">
                     <div class="empty-state"><div class="empty-state-icon">📚</div><p>LOADING PLAN LIBRARY...</p></div>
+                </div>
+            </div>
+
+            <!-- COMMUNITY VIEW -->
+            <div id="community-view" class="view">
+                <div class="community-header">
+                    <div>
+                        <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px;">COMMUNITY</h2>
+                        <p style="color: var(--text-secondary); font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">COMMUNITY-BUILT · COMMUNITY-PROVEN</p>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: flex-start; flex-shrink: 0;">
+                        <button class="btn btn-small" id="share-plan-btn">+ SHARE PLAN</button>
+                        <button class="btn btn-small" id="new-post-btn" style="display: none;">+ NEW POST</button>
+                    </div>
+                </div>
+
+                <!-- Sub-tabs: PLANS | FORUM -->
+                <div class="community-sub-tabs">
+                    <button class="community-tab active" data-pane="plans">🏋️ PLANS</button>
+                    <button class="community-tab" data-pane="forum">💬 FORUM</button>
+                </div>
+
+                <!-- ── Plans pane ── -->
+                <div id="community-plans-pane">
+                    <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+                        <select class="form-input" id="community-difficulty-filter" style="max-width: 200px;">
+                            <option value="">ALL LEVELS</option>
+                            <option value="beginner">BEGINNER</option>
+                            <option value="intermediate">INTERMEDIATE</option>
+                            <option value="advanced">ADVANCED</option>
+                            <option value="specialized">SPECIALIZED</option>
+                        </select>
+                        <select class="form-input" id="community-sort" style="max-width: 220px;">
+                            <option value="newest">NEWEST FIRST</option>
+                            <option value="success">HIGHEST SUCCESS RATE</option>
+                            <option value="popular">MOST ENROLLED</option>
+                        </select>
+                        <input type="text" class="form-input" id="community-search"
+                               placeholder="🔍 SEARCH COMMUNITY PLANS..."
+                               style="flex: 1; min-width: 200px;">
+                    </div>
+                    <div id="community-grid">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🏋️</div>
+                            <p>LOADING COMMUNITY PLANS...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Forum pane (hidden initially) ── -->
+                <div id="community-forum-pane" style="display: none;">
+                    <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+                        <select class="form-input" id="forum-category-filter" style="max-width: 220px;">
+                            <option value="">ALL CATEGORIES</option>
+                            <option value="supplements">💊 SUPPLEMENTS</option>
+                            <option value="nutrition">🥗 NUTRITION</option>
+                            <option value="lifestyle">🌙 LIFESTYLE</option>
+                            <option value="training">🧠 TRAINING TIPS</option>
+                            <option value="general">💬 GENERAL</option>
+                        </select>
+                        <input type="text" class="form-input" id="forum-search"
+                               placeholder="🔍 SEARCH FORUM..."
+                               style="flex: 1; min-width: 200px;">
+                    </div>
+                    <div id="forum-posts-list">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">💬</div>
+                            <p>LOADING FORUM...</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -440,6 +524,189 @@
                 <div style="display: flex; gap: 12px; margin-top: 30px;">
                     <button class="btn" id="save-timer-btn">SAVE</button>
                     <button class="btn btn-secondary" id="cancel-timer-btn">CANCEL</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Forum Post Modal -->
+        <div id="create-post-modal" class="modal">
+            <div class="modal-content" style="max-width: 560px;">
+                <div class="modal-header">NEW POST</div>
+
+                <div class="form-group">
+                    <label class="form-label">CATEGORY</label>
+                    <select class="form-input" id="post-category-select">
+                        <option value="supplements">💊 SUPPLEMENTS</option>
+                        <option value="nutrition">🥗 NUTRITION</option>
+                        <option value="lifestyle">🌙 LIFESTYLE</option>
+                        <option value="training">🧠 TRAINING TIPS</option>
+                        <option value="general">💬 GENERAL</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">POST</label>
+                    <textarea class="form-input" id="post-text-input" rows="5"
+                              placeholder="WHAT'S ON YOUR MIND? TIPS, QUESTIONS, EXPERIENCES..."
+                              maxlength="2000"
+                              style="resize: vertical; min-height: 100px;"></textarea>
+                    <div style="text-align: right; font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                        <span id="post-char-count">0</span>/2000
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button class="btn" id="confirm-create-post-btn">POST</button>
+                    <button class="btn btn-secondary" id="cancel-create-post-btn">CANCEL</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Post Detail Modal -->
+        <div id="post-detail-modal" class="modal">
+            <div class="modal-content" style="max-width: 660px;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <span id="pd-category-badge" class="forum-category-badge">GENERAL</span>
+                    <span id="pd-author" style="color: var(--text-secondary); font-size: 13px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: 1px;"></span>
+                    <span id="pd-time" style="color: var(--text-muted); font-size: 12px; margin-left: auto;"></span>
+                </div>
+
+                <p id="pd-text" style="font-size: 15px; line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap;"></p>
+
+                <!-- Like button row -->
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border);">
+                    <button id="pd-like-btn" class="like-btn">❤️ LIKE</button>
+                    <span id="pd-likes-count" style="font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; color: var(--text-secondary);">0 LIKES</span>
+                    <button id="pd-delete-post-btn" class="btn btn-secondary btn-small" style="margin-left: auto; display: none;">🗑️ DELETE</button>
+                </div>
+
+                <!-- Replies -->
+                <div class="comments-header" style="margin-bottom: 12px;">
+                    REPLIES <span id="pd-reply-count" class="comment-count-badge">0</span>
+                </div>
+                <div id="pd-replies-feed" class="comments-feed" style="max-height: 260px;"></div>
+
+                <!-- Reply input -->
+                <div class="comment-input-row" style="margin-top: 12px;">
+                    <input type="text" class="form-input" id="pd-reply-input"
+                           placeholder="ADD A REPLY..." maxlength="1000">
+                    <button class="btn btn-small" id="pd-post-reply-btn">REPLY</button>
+                </div>
+
+                <div style="margin-top: 20px; text-align: right;">
+                    <button class="btn btn-secondary" id="pd-close-btn">CLOSE</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Share Plan Modal -->
+        <div id="share-plan-modal" class="modal">
+            <div class="modal-content" style="max-width: 560px;">
+                <div class="modal-header">SHARE YOUR PLAN</div>
+
+                <div class="form-group">
+                    <label class="form-label">SELECT PLAN TO SHARE</label>
+                    <select class="form-input" id="share-plan-select">
+                        <option value="">-- CHOOSE A PLAN --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">DIFFICULTY</label>
+                    <select class="form-input" id="share-plan-difficulty">
+                        <option value="beginner">BEGINNER</option>
+                        <option value="intermediate">INTERMEDIATE</option>
+                        <option value="advanced">ADVANCED</option>
+                        <option value="specialized">SPECIALIZED</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">VISIBILITY</label>
+                    <select class="form-input" id="share-plan-visibility">
+                        <option value="public">🌍 PUBLIC — VISIBLE TO EVERYONE</option>
+                        <option value="private">🔒 PRIVATE — ONLY YOU CAN SEE IT</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">TAGS (COMMA SEPARATED)</label>
+                    <input type="text" class="form-input" id="share-plan-tags"
+                           placeholder="E.G. PPL, HYPERTROPHY, STRENGTH">
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 30px;">
+                    <button class="btn" id="confirm-share-plan-btn">PUBLISH TO COMMUNITY</button>
+                    <button class="btn btn-secondary" id="cancel-share-plan-btn">CANCEL</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Community Plan Detail Modal -->
+        <div id="community-plan-detail-modal" class="modal">
+            <div class="modal-content" style="max-width: 740px;">
+                <div class="modal-header" id="cpd-name">PLAN NAME</div>
+
+                <!-- Meta row -->
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <div class="cpd-meta-chip">
+                        <div class="cpd-chip-label">AUTHOR</div>
+                        <div class="cpd-chip-value" id="cpd-author">@user</div>
+                    </div>
+                    <div class="cpd-meta-chip">
+                        <div class="cpd-chip-label">DIFFICULTY</div>
+                        <div class="cpd-chip-value" id="cpd-difficulty">INTERMEDIATE</div>
+                    </div>
+                    <div class="cpd-meta-chip" style="border-left-color: var(--success);">
+                        <div class="cpd-chip-label">SUCCESS RATE</div>
+                        <div class="cpd-chip-value" id="cpd-success-rate" style="color: var(--success);">--%</div>
+                    </div>
+                    <div class="cpd-meta-chip">
+                        <div class="cpd-chip-label">ENROLLED</div>
+                        <div class="cpd-chip-value" id="cpd-enrolled">0</div>
+                    </div>
+                </div>
+
+                <p style="color: var(--text-secondary); margin-bottom: 16px;" id="cpd-description"></p>
+                <div id="cpd-tags" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px;"></div>
+
+                <!-- Plan days (scrollable) -->
+                <div style="max-height: 300px; overflow-y: auto; margin-bottom: 24px;" id="cpd-days"></div>
+
+                <!-- ── Success Wall ── -->
+                <div class="success-wall">
+                    <div class="success-wall-header">
+                        <span class="success-wall-title">SUCCESS WALL</span>
+                        <span class="success-wall-live">● LIVE</span>
+                    </div>
+                    <div id="success-wall-feed" class="success-wall-feed">
+                        <div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 16px;">
+                            LOADING RECENT PRS...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Reactions ── -->
+                <div id="cpd-reactions-bar" class="reactions-bar" style="margin-top: 20px;"></div>
+
+                <!-- ── Comments ── -->
+                <div class="comments-section" style="margin-top: 16px;">
+                    <div class="comments-header">
+                        COMMENTS <span id="cpd-comment-count" class="comment-count-badge">0</span>
+                    </div>
+                    <div id="cpd-comments-feed" class="comments-feed"></div>
+                    <div class="comment-input-row">
+                        <input type="text" class="form-input" id="cpd-comment-input"
+                               placeholder="ADD A COMMENT..." maxlength="500">
+                        <button class="btn btn-small" id="cpd-post-comment-btn">POST</button>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
+                    <button class="btn" id="cpd-enroll-btn">ENROLL IN THIS PLAN</button>
+                    <button class="btn btn-secondary" id="cpd-fork-btn">🔀 FORK PLAN</button>
+                    <button class="btn btn-secondary" id="cpd-close-btn" style="margin-left: auto;">CLOSE</button>
                 </div>
             </div>
         </div>

@@ -1,21 +1,30 @@
 import { EXERCISE_DATABASE } from './EXERCISE_DATABASE.js';
-import { auth, db, storage } from './firebase-config.js';
-import { 
-    signInWithEmailAndPassword, 
+import { auth, db, storage, messaging, VAPID_KEY } from './firebase-config.js';
+import {
+    signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
     GoogleAuthProvider,
     signInWithPopup
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-import { 
-    collection, 
-    doc, 
-    setDoc, 
-    getDoc, 
+import {
+    collection,
+    doc,
+    setDoc,
+    getDoc,
+    getDocs,
+    addDoc,
     updateDoc,
-    onSnapshot
+    deleteDoc,
+    onSnapshot,
+    query,
+    where,
+    orderBy,
+    limit,
+    serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js';
 import {
     ref as storageRef,
     uploadBytes,
@@ -54,6 +63,27 @@ let currentPlanDetail = null;
 
 let currentUser = null;
 let unsubscribeSnapshot = null;
+
+// Stopwatch state (AMRAP / EMOM)
+let stopwatchSeconds = 0;
+let stopwatchInterval = null;
+
+// Community plans state
+let communityPlans = [];
+let myEnrollments = new Set();       // Set of community plan Firestore IDs
+let currentCommunityPlan = null;     // Plan shown in detail modal
+let unsubscribeCommunityPlans = null;
+let unsubscribeSuccessWall = null;
+let unsubscribeReactions = null;
+let unsubscribeComments = null;
+
+// Forum state
+let forumPosts = [];
+let myForumLikes = new Set();        // Set of postIds the current user has liked
+let currentForumPost = null;
+let unsubscribeForumPosts = null;
+let unsubscribePostReplies = null;
+let activeCommunityPane = 'plans';   // Remembered across main-nav tab switches
 
 // ═════════════════════════════════════════════
 // THEME MANAGEMENT
@@ -111,6 +141,7 @@ function showMainApp() {
     document.getElementById('main-app').style.display = 'block';
     updateProfileUI();
     updateWorkoutHero();
+    initFCM();
 }
 
 async function handleLogin(email, password) {
@@ -973,6 +1004,31 @@ function getLastCompletedWorkout() {
     return workoutHistory[0];
 }
 
+function updateInactiveClock() {
+    const clockEl = document.getElementById('inactive-clock');
+    const timeEl = document.getElementById('inactive-clock-time');
+    if (!clockEl || !timeEl) return;
+
+    if (!workoutHistory.length) {
+        clockEl.style.display = 'none';
+        return;
+    }
+
+    const last = workoutHistory[0];
+    const diffMs = Date.now() - new Date(last.date).getTime();
+    const totalHours = Math.floor(diffMs / 3600000);
+    const days = Math.floor(totalHours / 24);
+    const hours = totalHours % 24;
+
+    let urgency = 'green';
+    if (totalHours >= 72) urgency = 'red';
+    else if (totalHours >= 48) urgency = 'yellow';
+
+    timeEl.textContent = days > 0 ? `${days}D ${hours}H` : `${hours}H`;
+    clockEl.dataset.urgency = urgency;
+    clockEl.style.display = 'block';
+}
+
 function switchView(viewName) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
@@ -985,6 +1041,7 @@ function switchView(viewName) {
         if (libraryPlans.length === 0) loadLibraryPlans();
         else renderLibraryPlans();
     }
+    if (viewName === 'community') switchCommunityPane(activeCommunityPane);
     if (viewName === 'progress') renderProgress();
     if (viewName === 'workout') updateWorkoutHero();
 }
@@ -1033,6 +1090,8 @@ function updateWorkoutHero() {
     } else if (lastWorkoutEl) {
         lastWorkoutEl.style.display = 'none';
     }
+
+    updateInactiveClock();
 }
 
 function renderPlans() {
@@ -1118,12 +1177,17 @@ function startWorkout() {
         planName: plan.name,
         dayName: nextWorkout.day.dayName,
         dayIndex: nextWorkout.dayIndex,
+        communityPlanId: plan.communityPlanId || null,
         startTime: new Date(),
         date: new Date().toISOString(),
         exercises: nextWorkout.day.exercises.map(ex => ({
             name: ex.name,
             targetReps: ex.targetReps,
-            sets: Array.from({ length: ex.sets }, () => ({ weight: '', reps: '', completed: false }))
+            sets: Array.from({ length: ex.sets }, (_, i) => {
+                const lastSets = getLastRawSets(ex.name);
+                const prev = lastSets?.[i];
+                return { weight: prev?.weight || '', reps: prev?.reps || '', completed: false };
+            })
         }))
     };
     
@@ -1226,6 +1290,9 @@ function finishWorkout() {
     }
     clearInterval(restInterval);
     clearInterval(elapsedInterval);
+    clearInterval(stopwatchInterval);
+    stopwatchInterval = null;
+    stopwatchSeconds = 0;
     currentWorkout.endTime = new Date().toISOString();
     workoutHistory.unshift(currentWorkout);
     saveToFirebase();
@@ -1251,20 +1318,36 @@ function getLastRawSets(exerciseName) {
     return null;
 }
 
+function playBeep() {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.5);
+    } catch (e) { /* AudioContext not available */ }
+}
+
 function startRestTimer(seconds) {
     clearInterval(restInterval);
     const timerEl = document.getElementById('rest-timer');
     const displayEl = document.getElementById('timer-display');
     timerEl.classList.add('active');
     currentRestSeconds = seconds;
-    
+
     const updateDisplay = () => {
         const mins = Math.floor(currentRestSeconds / 60);
         const secs = currentRestSeconds % 60;
         displayEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
     };
     updateDisplay();
-    
+
     restInterval = setInterval(() => {
         currentRestSeconds--;
         updateDisplay();
@@ -1272,6 +1355,7 @@ function startRestTimer(seconds) {
             clearInterval(restInterval);
             timerEl.classList.remove('active');
             if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
+            playBeep();
             showToast('REST COMPLETE — NEXT SET!');
         }
     }, 1000);
@@ -1287,6 +1371,38 @@ function adjustRestTimer(seconds) {
     const mins = Math.floor(currentRestSeconds / 60);
     const secs = currentRestSeconds % 60;
     document.getElementById('timer-display').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// ═════════════════════════════════════════════
+// STOPWATCH (AMRAP / EMOM)
+// ═════════════════════════════════════════════
+function updateStopwatchDisplay() {
+    const mins = Math.floor(stopwatchSeconds / 60);
+    const secs = stopwatchSeconds % 60;
+    const el = document.getElementById('stopwatch-display');
+    if (el) el.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function toggleStopwatch() {
+    if (stopwatchInterval) {
+        clearInterval(stopwatchInterval);
+        stopwatchInterval = null;
+        document.getElementById('stopwatch-start-btn').textContent = 'START';
+    } else {
+        stopwatchInterval = setInterval(() => {
+            stopwatchSeconds++;
+            updateStopwatchDisplay();
+        }, 1000);
+        document.getElementById('stopwatch-start-btn').textContent = 'PAUSE';
+    }
+}
+
+function resetStopwatch() {
+    clearInterval(stopwatchInterval);
+    stopwatchInterval = null;
+    stopwatchSeconds = 0;
+    updateStopwatchDisplay();
+    document.getElementById('stopwatch-start-btn').textContent = 'START';
 }
 
 // ═════════════════════════════════════════════
@@ -1750,9 +1866,891 @@ function showToast(message) {
     setTimeout(() => toast.style.opacity = '0', 2500);
 }
 
+// ═════════════════════════════════════════════
+// FCM — PUSH NOTIFICATIONS
+// ═════════════════════════════════════════════
+async function initFCM() {
+    if (!messaging || !('Notification' in window)) return;
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+
+        const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+        if (!token || !currentUser) return;
+
+        // Persist token so Cloud Functions can look it up
+        await setDoc(
+            doc(db, 'users', currentUser.uid, 'tokens', 'fcm'),
+            { token, updatedAt: new Date().toISOString() }
+        );
+
+        // Show foreground notifications as toasts
+        onMessage(messaging, (payload) => {
+            const body = payload.notification?.body || '';
+            showToast(body || 'NEW NOTIFICATION');
+        });
+    } catch (e) {
+        // FCM may be blocked by ad-blockers or browser policy — non-fatal
+        console.warn('FCM init skipped:', e.message);
+    }
+}
+
+// ═════════════════════════════════════════════
+// COMMUNITY PLANS
+// ═════════════════════════════════════════════
+
+// ── Helpers ──────────────────────────────────
+function difficultyColor(difficulty) {
+    const map = {
+        beginner: 'var(--success)',
+        intermediate: 'var(--warning)',
+        advanced: 'var(--danger)',
+        specialized: 'var(--primary)'
+    };
+    return map[difficulty] || 'var(--border)';
+}
+
+async function loadMyEnrollments() {
+    if (!currentUser) return;
+    myEnrollments.clear();
+    try {
+        const snap = await getDocs(
+            query(
+                collection(db, 'plan_enrollments'),
+                where('uid', '==', currentUser.uid)
+            )
+        );
+        snap.forEach(d => myEnrollments.add(d.data().planId));
+    } catch (e) {
+        console.error('Error loading enrollments:', e);
+    }
+}
+
+// ── Load & render community plans ────────────
+async function loadCommunityPlans() {
+    if (!currentUser) return;
+
+    document.getElementById('community-grid').innerHTML =
+        '<div class="empty-state"><div class="empty-state-icon">🏋️</div><p>LOADING...</p></div>';
+
+    // Refresh enrollment cache first
+    await loadMyEnrollments();
+
+    // Real-time listener (unsubscribe previous if any)
+    if (unsubscribeCommunityPlans) unsubscribeCommunityPlans();
+
+    unsubscribeCommunityPlans = onSnapshot(
+        query(collection(db, 'community_plans'), orderBy('createdAt', 'desc'), limit(50)),
+        (snap) => {
+            communityPlans = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+            renderCommunityPlans();
+        },
+        (err) => {
+            console.error('Community plans listener error:', err);
+            document.getElementById('community-grid').innerHTML =
+                '<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>ERROR LOADING PLANS</p></div>';
+        }
+    );
+}
+
+function renderCommunityPlans() {
+    const grid = document.getElementById('community-grid');
+    if (!grid) return;
+
+    const diffFilter = document.getElementById('community-difficulty-filter')?.value || '';
+    const sortMode   = document.getElementById('community-sort')?.value || 'newest';
+    const search     = document.getElementById('community-search')?.value.toLowerCase() || '';
+
+    let filtered = communityPlans.filter(p => {
+        // Show public plans to everyone; show private plans only to the author
+        if (p.visibility === 'private' && p.authorUid !== currentUser?.uid) return false;
+        if (diffFilter && p.difficulty !== diffFilter) return false;
+        if (search && !p.name.toLowerCase().includes(search) &&
+            !p.description?.toLowerCase().includes(search) &&
+            !(p.tags || []).some(t => t.toLowerCase().includes(search))) return false;
+        return true;
+    });
+
+    if (sortMode === 'success')  filtered.sort((a, b) => (b.successRate || 0) - (a.successRate || 0));
+    if (sortMode === 'popular')  filtered.sort((a, b) => (b.enrolledCount || 0) - (a.enrolledCount || 0));
+    // 'newest' is already the default order from the query
+
+    if (filtered.length === 0) {
+        const msg = communityPlans.length === 0
+            ? 'NO COMMUNITY PLANS YET — BE THE FIRST TO SHARE ONE!'
+            : 'NO PLANS MATCH YOUR FILTERS';
+        grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏋️</div><p>${msg}</p></div>`;
+        return;
+    }
+
+    grid.innerHTML = filtered.map(plan => {
+        const enrolled  = myEnrollments.has(plan.firestoreId);
+        const dcolor    = difficultyColor(plan.difficulty);
+        const isOwn     = plan.authorUid === currentUser?.uid;
+        const forkLabel = plan.parentPlanId ? '🔀 FORK' : 'ORIGINAL';
+        const tagsHtml  = (plan.tags || []).slice(0, 3).map(t =>
+            `<span class="plan-tag">${escapeHtml(t)}</span>`
+        ).join('');
+
+        return `
+        <div class="community-plan-card" style="border-left-color: ${dcolor};">
+            <div class="cpc-top">
+                <div>
+                    <h3 class="cpc-name">${escapeHtml(plan.name)}</h3>
+                    <div class="cpc-author">BY @${escapeHtml(plan.authorDisplayName || 'unknown')}
+                        ${plan.parentPlanId ? `<span class="cpc-fork-badge">${forkLabel}</span>` : ''}
+                    </div>
+                </div>
+                <span class="difficulty-badge" style="background: ${dcolor};">${escapeHtml(plan.difficulty || '')}</span>
+            </div>
+
+            <p class="cpc-desc">${escapeHtml(plan.description || '')}</p>
+            ${tagsHtml ? `<div class="cpc-tags">${tagsHtml}</div>` : ''}
+
+            <div class="cpc-stats-row">
+                <div class="cpc-stat">
+                    <div class="cpc-stat-val" style="color: var(--success);">${plan.successRate ?? '--'}%</div>
+                    <div class="cpc-stat-lbl">SUCCESS RATE</div>
+                </div>
+                <div class="cpc-stat">
+                    <div class="cpc-stat-val">${plan.enrolledCount || 0}</div>
+                    <div class="cpc-stat-lbl">ENROLLED</div>
+                </div>
+                <div class="cpc-stat">
+                    <div class="cpc-stat-val">${(plan.days || []).length}</div>
+                    <div class="cpc-stat-lbl">DAYS</div>
+                </div>
+            </div>
+
+            <div class="cpc-actions">
+                ${enrolled
+                    ? `<button class="btn btn-small" disabled style="opacity:0.6;">✓ ENROLLED</button>`
+                    : `<button class="btn btn-small cpc-enroll-btn" data-id="${plan.firestoreId}">ENROLL</button>`
+                }
+                ${!isOwn ? `<button class="btn btn-secondary btn-small cpc-fork-btn" data-id="${plan.firestoreId}">🔀 FORK</button>` : ''}
+                <button class="btn btn-secondary btn-small cpc-view-btn" data-id="${plan.firestoreId}">VIEW DETAILS</button>
+            </div>
+        </div>
+        `;
+    }).join('');
+
+    grid.querySelectorAll('.cpc-enroll-btn').forEach(btn =>
+        btn.addEventListener('click', () => enrollInCommunityPlan(btn.dataset.id))
+    );
+    grid.querySelectorAll('.cpc-fork-btn').forEach(btn =>
+        btn.addEventListener('click', () => forkCommunityPlan(btn.dataset.id))
+    );
+    grid.querySelectorAll('.cpc-view-btn').forEach(btn =>
+        btn.addEventListener('click', () => showCommunityPlanDetail(btn.dataset.id))
+    );
+}
+
+// ── Enroll ────────────────────────────────────
+async function enrollInCommunityPlan(communityPlanId) {
+    if (!currentUser) return;
+    if (myEnrollments.has(communityPlanId)) {
+        showToast('ALREADY ENROLLED IN THIS PLAN', 'info');
+        return;
+    }
+
+    const plan = communityPlans.find(p => p.firestoreId === communityPlanId);
+    if (!plan) return;
+
+    try {
+        // 1. Copy plan into user's local workout plans
+        const localPlan = {
+            id: Date.now(),
+            name: plan.name,
+            description: plan.description || '',
+            days: plan.days,
+            communityPlanId,           // Link back to community plan
+            difficulty: plan.difficulty
+        };
+        workoutPlans.push(localPlan);
+        await saveToFirebase();
+
+        // 2. Write enrollment document (Cloud Function increments enrolledCount)
+        await addDoc(collection(db, 'plan_enrollments'), {
+            uid: currentUser.uid,
+            planId: communityPlanId,
+            status: 'enrolled',
+            enrolledAt: serverTimestamp(),
+            lastActivityAt: serverTimestamp(),
+            completedAt: null
+        });
+
+        myEnrollments.add(communityPlanId);
+        renderCommunityPlans();
+        showToast(`ENROLLED IN ${plan.name.toUpperCase()}! 💪`, 'success');
+
+        // Close detail modal if open
+        document.getElementById('community-plan-detail-modal').classList.remove('active');
+    } catch (e) {
+        console.error('Enroll error:', e);
+        showToast('ERROR ENROLLING — TRY AGAIN', 'error');
+    }
+}
+
+// ── Fork ──────────────────────────────────────
+async function forkCommunityPlan(communityPlanId) {
+    if (!currentUser) return;
+
+    const source = communityPlans.find(p => p.firestoreId === communityPlanId);
+    if (!source) return;
+
+    const newDepth = (source.forkDepth || 0) + 1;
+    if (newDepth > 3) {
+        showToast('FORK DEPTH LIMIT REACHED (MAX 3)', 'error');
+        return;
+    }
+
+    const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete';
+
+    try {
+        await addDoc(collection(db, 'community_plans'), {
+            name: `${source.name} (FORK)`,
+            description: source.description || '',
+            days: source.days,
+            difficulty: source.difficulty,
+            tags: source.tags || [],
+            authorUid: currentUser.uid,
+            authorDisplayName: displayName,
+            parentPlanId: communityPlanId,
+            forkDepth: newDepth,
+            enrolledCount: 0,
+            completedCount: 0,
+            successRate: 0,
+            createdAt: serverTimestamp()
+        });
+        showToast('PLAN FORKED — EDIT AND SHARE IT! 🔀', 'success');
+    } catch (e) {
+        console.error('Fork error:', e);
+        showToast('ERROR FORKING PLAN', 'error');
+    }
+}
+
+// ── Share your own plan ───────────────────────
+function openSharePlanModal() {
+    const select = document.getElementById('share-plan-select');
+    select.innerHTML = '<option value="">-- CHOOSE A PLAN --</option>' +
+        workoutPlans.map((p, i) =>
+            `<option value="${i}">${escapeHtml(p.name)}</option>`
+        ).join('');
+    document.getElementById('share-plan-tags').value = '';
+    document.getElementById('share-plan-difficulty').value = 'intermediate';
+    document.getElementById('share-plan-visibility').value = 'public';
+    document.getElementById('share-plan-modal').classList.add('active');
+}
+
+async function confirmSharePlan() {
+    const selectEl = document.getElementById('share-plan-select');
+    const idx = parseInt(selectEl.value);
+    if (isNaN(idx) || idx < 0) {
+        showToast('SELECT A PLAN FIRST', 'error');
+        return;
+    }
+
+    const plan = workoutPlans[idx];
+    if (!plan) return;
+
+    const difficulty  = document.getElementById('share-plan-difficulty').value;
+    const visibility  = document.getElementById('share-plan-visibility').value;
+    const rawTags     = document.getElementById('share-plan-tags').value;
+    const tags        = rawTags.split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
+    const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete';
+
+    try {
+        await addDoc(collection(db, 'community_plans'), {
+            name: plan.name,
+            description: plan.description || '',
+            days: plan.days,
+            difficulty,
+            visibility,
+            tags,
+            authorUid: currentUser.uid,
+            authorDisplayName: displayName,
+            parentPlanId: null,
+            forkDepth: 0,
+            enrolledCount: 0,
+            completedCount: 0,
+            successRate: 0,
+            createdAt: serverTimestamp()
+        });
+        document.getElementById('share-plan-modal').classList.remove('active');
+        const label = visibility === 'private' ? 'SAVED PRIVATELY' : 'PUBLISHED TO COMMUNITY 🚀';
+        showToast(`${plan.name.toUpperCase()} — ${label}`, 'success');
+    } catch (e) {
+        console.error('Share error:', e);
+        showToast('ERROR PUBLISHING PLAN', 'error');
+    }
+}
+
+// ── Community plan detail + Success Wall ──────
+function showCommunityPlanDetail(communityPlanId) {
+    const plan = communityPlans.find(p => p.firestoreId === communityPlanId);
+    if (!plan) return;
+    currentCommunityPlan = plan;
+
+    document.getElementById('cpd-name').textContent = plan.name;
+    document.getElementById('cpd-author').textContent = `@${plan.authorDisplayName || 'unknown'}`;
+    document.getElementById('cpd-difficulty').textContent = (plan.difficulty || '').toUpperCase();
+    document.getElementById('cpd-success-rate').textContent = `${plan.successRate ?? '--'}%`;
+    document.getElementById('cpd-enrolled').textContent = plan.enrolledCount || 0;
+    document.getElementById('cpd-description').textContent = plan.description || '';
+
+    // Tags
+    const tagsEl = document.getElementById('cpd-tags');
+    tagsEl.innerHTML = (plan.tags || []).map(t =>
+        `<span class="plan-tag">${escapeHtml(t)}</span>`
+    ).join('');
+
+    // Days
+    const daysEl = document.getElementById('cpd-days');
+    daysEl.innerHTML = (plan.days || []).map((day, i) => `
+        <div style="background: var(--bg-card); border: 2px solid var(--border); border-left: 4px solid var(--primary); padding: 16px; margin-bottom: 12px;">
+            <h4 style="font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; text-transform: uppercase; margin-bottom: 12px;">
+                DAY ${i + 1}: ${escapeHtml(day.dayName)}
+            </h4>
+            <div style="display: grid; gap: 6px;">
+                ${(day.exercises || []).map((ex, j) => `
+                    <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--bg-hover); border-left: 3px solid var(--accent);">
+                        <span style="font-size: 13px; font-weight: 600;">${j + 1}. ${escapeHtml(ex.name)}</span>
+                        <span style="color: var(--text-secondary); font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700;">${ex.sets} × ${ex.targetReps}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+
+    // Toggle enroll button label
+    const enrolled = myEnrollments.has(communityPlanId);
+    const enrollBtn = document.getElementById('cpd-enroll-btn');
+    enrollBtn.textContent = enrolled ? '✓ ENROLLED' : 'ENROLL IN THIS PLAN';
+    enrollBtn.disabled = enrolled;
+
+    document.getElementById('community-plan-detail-modal').classList.add('active');
+
+    // Start all live listeners for this plan
+    startSuccessWall(communityPlanId);
+    startPlanReactions(communityPlanId);
+    startPlanComments(communityPlanId);
+}
+
+function startSuccessWall(communityPlanId) {
+    // Unsubscribe previous listener
+    if (unsubscribeSuccessWall) { unsubscribeSuccessWall(); unsubscribeSuccessWall = null; }
+
+    unsubscribeSuccessWall = onSnapshot(
+        query(
+            collection(db, 'plan_prs'),
+            where('planId', '==', communityPlanId),
+            orderBy('achievedAt', 'desc'),
+            limit(20)
+        ),
+        (snap) => renderSuccessWall(snap.docs),
+        (err) => console.error('Success Wall error:', err)
+    );
+}
+
+function renderSuccessWall(docs) {
+    const feed = document.getElementById('success-wall-feed');
+    if (!feed) return;
+
+    if (docs.length === 0) {
+        feed.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">NO PRS YET — BE THE FIRST!</div>';
+        return;
+    }
+
+    feed.innerHTML = docs.map(d => {
+        const pr = d.data();
+        const prId = d.id;
+        const timeAgo = pr.achievedAt ? formatTimeAgo(pr.achievedAt.toDate()) : '';
+        const isOwnPR = pr.uid === currentUser?.uid;
+
+        return `
+        <div class="sw-entry">
+            <div class="sw-entry-body">
+                <span class="sw-name">@${escapeHtml(pr.displayName)}</span>
+                hit a PR on <strong>${escapeHtml(pr.exerciseName)}</strong>
+                — <span class="sw-weight">${pr.weight} × ${pr.reps}</span>
+                ${pr.previousBest > 0 ? `<span class="sw-prev">(prev. best: ${pr.previousBest} lbs)</span>` : ''}
+            </div>
+            <div class="sw-entry-meta">
+                <span class="sw-time">${timeAgo}</span>
+                ${!isOwnPR
+                    ? `<button class="sw-kudos-btn" onclick="sendKudos('${prId}','${pr.uid}')">🥤 KUDOS</button>`
+                    : ''
+                }
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+function formatTimeAgo(date) {
+    const diffMs = Date.now() - date.getTime();
+    const mins   = Math.floor(diffMs / 60000);
+    if (mins < 1)   return 'JUST NOW';
+    if (mins < 60)  return `${mins}M AGO`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24)   return `${hrs}H AGO`;
+    return `${Math.floor(hrs / 24)}D AGO`;
+}
+
+// ── Kudos ─────────────────────────────────────
+async function sendKudos(prId, toUid) {
+    if (!currentUser) return;
+    const kudosId = `${currentUser.uid}_${prId}`;
+    try {
+        await setDoc(doc(db, 'kudos', kudosId), {
+            fromUid: currentUser.uid,
+            toUid,
+            planPrId: prId,
+            type: 'shake',
+            sentAt: serverTimestamp()
+        });
+        showToast('KUDOS SENT! 🥤', 'success');
+        // Grey out the button immediately
+        const btn = document.querySelector(`.sw-kudos-btn[onclick="sendKudos('${prId}','${toUid}')"]`);
+        if (btn) { btn.textContent = '✓ KUDOS'; btn.disabled = true; }
+    } catch (e) {
+        // Likely already sent (doc ID collision = duplicate prevention working)
+        showToast('ALREADY SENT KUDOS!', 'info');
+    }
+}
+
+// ─────────────────────────────────────────────
+// COMMUNITY PANE SWITCHING (PLANS | FORUM)
+// ─────────────────────────────────────────────
+function switchCommunityPane(pane) {
+    activeCommunityPane = pane;
+
+    document.querySelectorAll('.community-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.pane === pane);
+    });
+
+    const plansPane   = document.getElementById('community-plans-pane');
+    const forumPane   = document.getElementById('community-forum-pane');
+    const sharePlanBtn = document.getElementById('share-plan-btn');
+    const newPostBtn   = document.getElementById('new-post-btn');
+
+    if (pane === 'plans') {
+        plansPane.style.display = '';
+        forumPane.style.display = 'none';
+        sharePlanBtn.style.display = '';
+        newPostBtn.style.display = 'none';
+        loadCommunityPlans();
+    } else {
+        plansPane.style.display = 'none';
+        forumPane.style.display = '';
+        sharePlanBtn.style.display = 'none';
+        newPostBtn.style.display = '';
+        loadForum();
+    }
+}
+
+// ─────────────────────────────────────────────
+// PLAN REACTIONS (emoji toggle per-user)
+// ─────────────────────────────────────────────
+const REACTION_EMOJIS = ['💪', '🔥', '👍', '❤️'];
+
+function startPlanReactions(planId) {
+    if (unsubscribeReactions) { unsubscribeReactions(); unsubscribeReactions = null; }
+
+    unsubscribeReactions = onSnapshot(
+        collection(db, 'community_plans', planId, 'reactions'),
+        (snap) => {
+            const docs = snap.docs.map(d => d.data());
+            renderReactions(planId, docs);
+        },
+        (err) => console.error('Reactions error:', err)
+    );
+}
+
+function renderReactions(planId, reactionDocs) {
+    const bar = document.getElementById('cpd-reactions-bar');
+    if (!bar) return;
+
+    const counts = {};
+    REACTION_EMOJIS.forEach(e => { counts[e] = 0; });
+    reactionDocs.forEach(d => { if (counts[d.emoji] !== undefined) counts[d.emoji]++; });
+
+    const myReaction = reactionDocs.find(d => d.uid === currentUser?.uid)?.emoji || null;
+
+    bar.innerHTML = REACTION_EMOJIS.map(emoji => `
+        <button class="reaction-btn ${myReaction === emoji ? 'active' : ''}"
+                onclick="toggleReaction('${planId}','${emoji}')">
+            ${emoji} <span>${counts[emoji] || ''}</span>
+        </button>
+    `).join('');
+}
+
+async function toggleReaction(planId, emoji) {
+    if (!currentUser) return;
+    const reactionRef = doc(db, 'community_plans', planId, 'reactions', currentUser.uid);
+    try {
+        const snap = await getDoc(reactionRef);
+        if (snap.exists() && snap.data().emoji === emoji) {
+            await deleteDoc(reactionRef);
+        } else {
+            await setDoc(reactionRef, {
+                uid: currentUser.uid,
+                displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete',
+                emoji,
+                reactedAt: serverTimestamp()
+            });
+        }
+    } catch (e) {
+        console.error('Reaction error:', e);
+    }
+}
+
+// ─────────────────────────────────────────────
+// PLAN COMMENTS
+// ─────────────────────────────────────────────
+function startPlanComments(planId) {
+    if (unsubscribeComments) { unsubscribeComments(); unsubscribeComments = null; }
+
+    unsubscribeComments = onSnapshot(
+        query(
+            collection(db, 'community_plans', planId, 'comments'),
+            orderBy('createdAt', 'asc')
+        ),
+        (snap) => renderPlanComments(planId, snap.docs),
+        (err) => console.error('Comments error:', err)
+    );
+}
+
+function renderPlanComments(planId, docs) {
+    const feed  = document.getElementById('cpd-comments-feed');
+    const count = document.getElementById('cpd-comment-count');
+    if (!feed) return;
+    if (count) count.textContent = docs.length;
+
+    if (docs.length === 0) {
+        feed.innerHTML = '<div class="comment-empty">BE THE FIRST TO COMMENT!</div>';
+        return;
+    }
+
+    feed.innerHTML = docs.map(d => {
+        const c = d.data();
+        const isOwn = c.uid === currentUser?.uid;
+        return `
+        <div class="comment-entry">
+            <div class="comment-meta">
+                <span class="comment-author">@${escapeHtml(c.displayName)}</span>
+                <span class="comment-time">${c.createdAt ? formatTimeAgo(c.createdAt.toDate()) : ''}</span>
+                ${isOwn ? `<button class="comment-delete-btn" onclick="deletePlanComment('${planId}','${d.id}')">×</button>` : ''}
+            </div>
+            <div class="comment-text">${escapeHtml(c.text)}</div>
+        </div>`;
+    }).join('');
+
+    // Scroll to bottom so newest comment is visible
+    feed.scrollTop = feed.scrollHeight;
+}
+
+async function postPlanComment() {
+    const input = document.getElementById('cpd-comment-input');
+    const text  = input?.value.trim();
+    if (!text || !currentCommunityPlan || !currentUser) return;
+
+    try {
+        await addDoc(
+            collection(db, 'community_plans', currentCommunityPlan.firestoreId, 'comments'),
+            {
+                uid: currentUser.uid,
+                displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete',
+                text,
+                createdAt: serverTimestamp()
+            }
+        );
+        input.value = '';
+    } catch (e) {
+        console.error('Comment error:', e);
+        showToast('ERROR POSTING COMMENT', 'error');
+    }
+}
+
+async function deletePlanComment(planId, commentId) {
+    try {
+        await deleteDoc(doc(db, 'community_plans', planId, 'comments', commentId));
+    } catch (e) {
+        console.error('Delete comment error:', e);
+    }
+}
+
+// ─────────────────────────────────────────────
+// FORUM
+// ─────────────────────────────────────────────
+async function loadForum() {
+    if (!currentUser) return;
+
+    // Load my likes once on first open
+    if (myForumLikes.size === 0) {
+        try {
+            const snap = await getDocs(
+                query(collection(db, 'forum_likes'), where('uid', '==', currentUser.uid))
+            );
+            snap.forEach(d => myForumLikes.add(d.data().postId));
+        } catch (e) { console.error('Forum likes load error:', e); }
+    }
+
+    // Listener already running — just re-render existing data (no need to re-subscribe)
+    if (unsubscribeForumPosts) {
+        renderForumPosts();
+        return;
+    }
+
+    document.getElementById('forum-posts-list').innerHTML =
+        '<div class="empty-state"><div class="empty-state-icon">💬</div><p>LOADING...</p></div>';
+
+    unsubscribeForumPosts = onSnapshot(
+        query(collection(db, 'forum_posts'), orderBy('createdAt', 'desc'), limit(60)),
+        (snap) => {
+            forumPosts = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+            renderForumPosts();
+        },
+        (err) => {
+            console.error('Forum listener error:', err);
+            document.getElementById('forum-posts-list').innerHTML =
+                '<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>ERROR LOADING FORUM</p></div>';
+        }
+    );
+}
+
+function renderForumPosts() {
+    const list     = document.getElementById('forum-posts-list');
+    if (!list) return;
+    const catFilter = document.getElementById('forum-category-filter')?.value || '';
+    const search    = document.getElementById('forum-search')?.value.toLowerCase() || '';
+
+    let filtered = forumPosts.filter(p => {
+        if (catFilter && p.category !== catFilter) return false;
+        if (search && !p.text.toLowerCase().includes(search) &&
+            !(p.displayName || '').toLowerCase().includes(search)) return false;
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        const msg = forumPosts.length === 0
+            ? 'NO POSTS YET — START THE CONVERSATION!'
+            : 'NO POSTS MATCH YOUR FILTERS';
+        list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">💬</div><p>${msg}</p></div>`;
+        return;
+    }
+
+    const categoryMeta = {
+        supplements: { icon: '💊', label: 'SUPPLEMENTS' },
+        nutrition:   { icon: '🥗', label: 'NUTRITION'   },
+        lifestyle:   { icon: '🌙', label: 'LIFESTYLE'   },
+        training:    { icon: '🧠', label: 'TRAINING TIPS' },
+        general:     { icon: '💬', label: 'GENERAL'     }
+    };
+
+    list.innerHTML = filtered.map(post => {
+        const meta      = categoryMeta[post.category] || { icon: '💬', label: 'GENERAL' };
+        const liked     = myForumLikes.has(post.firestoreId);
+        const preview   = (post.text || '').slice(0, 200) + (post.text?.length > 200 ? '...' : '');
+        const isOwn     = post.uid === currentUser?.uid;
+
+        return `
+        <div class="forum-post-card" onclick="showPostDetail('${post.firestoreId}')">
+            <div class="forum-post-top">
+                <span class="forum-category-badge cat-${post.category}">${meta.icon} ${meta.label}</span>
+                <span class="forum-post-author">@${escapeHtml(post.displayName || 'user')}</span>
+                <span class="forum-post-time">${post.createdAt ? formatTimeAgo(post.createdAt.toDate()) : ''}</span>
+            </div>
+            <p class="forum-post-preview">${escapeHtml(preview)}</p>
+            <div class="forum-post-footer">
+                <span class="forum-stat ${liked ? 'liked' : ''}">❤️ ${post.likesCount || 0}</span>
+                <span class="forum-stat">💬 ${post.replyCount || 0} REPLIES</span>
+                ${isOwn ? `<span class="forum-delete-link" onclick="event.stopPropagation(); deleteForumPost('${post.firestoreId}')">DELETE</span>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function showPostDetail(postId) {
+    const post = forumPosts.find(p => p.firestoreId === postId);
+    if (!post) return;
+    currentForumPost = post;
+
+    const categoryMeta = {
+        supplements: { icon: '💊', label: 'SUPPLEMENTS' },
+        nutrition:   { icon: '🥗', label: 'NUTRITION'   },
+        lifestyle:   { icon: '🌙', label: 'LIFESTYLE'   },
+        training:    { icon: '🧠', label: 'TRAINING TIPS' },
+        general:     { icon: '💬', label: 'GENERAL'     }
+    };
+    const meta = categoryMeta[post.category] || { icon: '💬', label: 'GENERAL' };
+
+    const badge = document.getElementById('pd-category-badge');
+    badge.textContent = `${meta.icon} ${meta.label}`;
+    badge.className = `forum-category-badge cat-${post.category}`;
+    document.getElementById('pd-author').textContent = `@${post.displayName || 'user'}`;
+    document.getElementById('pd-time').textContent = post.createdAt ? formatTimeAgo(post.createdAt.toDate()) : '';
+    document.getElementById('pd-text').textContent = post.text || '';
+    document.getElementById('pd-likes-count').textContent = `${post.likesCount || 0} LIKES`;
+    document.getElementById('pd-reply-count').textContent = post.replyCount || 0;
+
+    const likeBtn = document.getElementById('pd-like-btn');
+    const liked = myForumLikes.has(postId);
+    likeBtn.textContent = liked ? '❤️ LIKED' : '❤️ LIKE';
+    likeBtn.classList.toggle('liked', liked);
+
+    const deleteBtn = document.getElementById('pd-delete-post-btn');
+    deleteBtn.style.display = post.uid === currentUser?.uid ? '' : 'none';
+
+    document.getElementById('pd-reply-input').value = '';
+    document.getElementById('post-detail-modal').classList.add('active');
+
+    startPostReplies(postId);
+}
+
+function startPostReplies(postId) {
+    if (unsubscribePostReplies) { unsubscribePostReplies(); unsubscribePostReplies = null; }
+    unsubscribePostReplies = onSnapshot(
+        query(
+            collection(db, 'forum_posts', postId, 'replies'),
+            orderBy('createdAt', 'asc')
+        ),
+        (snap) => renderReplies(postId, snap.docs),
+        (err) => console.error('Replies error:', err)
+    );
+}
+
+function renderReplies(postId, docs) {
+    const feed = document.getElementById('pd-replies-feed');
+    if (!feed) return;
+
+    if (docs.length === 0) {
+        feed.innerHTML = '<div class="comment-empty">NO REPLIES YET</div>';
+        return;
+    }
+
+    feed.innerHTML = docs.map(d => {
+        const r = d.data();
+        const isOwn = r.uid === currentUser?.uid;
+        return `
+        <div class="comment-entry">
+            <div class="comment-meta">
+                <span class="comment-author">@${escapeHtml(r.displayName)}</span>
+                <span class="comment-time">${r.createdAt ? formatTimeAgo(r.createdAt.toDate()) : ''}</span>
+                ${isOwn ? `<button class="comment-delete-btn" onclick="deleteReply('${postId}','${d.id}')">×</button>` : ''}
+            </div>
+            <div class="comment-text">${escapeHtml(r.text)}</div>
+        </div>`;
+    }).join('');
+    feed.scrollTop = feed.scrollHeight;
+}
+
+async function postReply() {
+    const input = document.getElementById('pd-reply-input');
+    const text  = input?.value.trim();
+    if (!text || !currentForumPost || !currentUser) return;
+
+    try {
+        await addDoc(
+            collection(db, 'forum_posts', currentForumPost.firestoreId, 'replies'),
+            {
+                uid: currentUser.uid,
+                displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete',
+                text,
+                createdAt: serverTimestamp()
+            }
+        );
+        input.value = '';
+    } catch (e) {
+        console.error('Reply error:', e);
+        showToast('ERROR POSTING REPLY', 'error');
+    }
+}
+
+async function deleteReply(postId, replyId) {
+    try {
+        await deleteDoc(doc(db, 'forum_posts', postId, 'replies', replyId));
+    } catch (e) { console.error('Delete reply error:', e); }
+}
+
+async function togglePostLike(postId) {
+    if (!currentUser || !postId) return;
+    const likeId  = `${currentUser.uid}_${postId}`;
+    const likeRef = doc(db, 'forum_likes', likeId);
+
+    try {
+        if (myForumLikes.has(postId)) {
+            await deleteDoc(likeRef);
+            myForumLikes.delete(postId);
+        } else {
+            await setDoc(likeRef, {
+                uid:    currentUser.uid,
+                postId: postId,
+                likedAt: serverTimestamp()
+            });
+            myForumLikes.add(postId);
+        }
+        // Update detail modal button immediately
+        const liked  = myForumLikes.has(postId);
+        const likeBtn = document.getElementById('pd-like-btn');
+        if (likeBtn) { likeBtn.textContent = liked ? '❤️ LIKED' : '❤️ LIKE'; likeBtn.classList.toggle('liked', liked); }
+    } catch (e) {
+        console.error('Like error:', e);
+        showToast('ERROR — TRY AGAIN', 'error');
+    }
+}
+
+async function deleteForumPost(postId) {
+    if (!currentUser) return;
+    try {
+        await deleteDoc(doc(db, 'forum_posts', postId));
+        showToast('POST DELETED', 'info');
+    } catch (e) {
+        console.error('Delete post error:', e);
+        showToast('ERROR DELETING POST', 'error');
+    }
+}
+
+function openCreatePostModal() {
+    document.getElementById('post-text-input').value = '';
+    document.getElementById('post-char-count').textContent = '0';
+    document.getElementById('post-category-select').value = 'general';
+    document.getElementById('create-post-modal').classList.add('active');
+}
+
+async function createForumPost() {
+    const text     = document.getElementById('post-text-input').value.trim();
+    const category = document.getElementById('post-category-select').value;
+    if (!text) { showToast('WRITE SOMETHING FIRST', 'error'); return; }
+
+    const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete';
+    try {
+        await addDoc(collection(db, 'forum_posts'), {
+            uid: currentUser.uid,
+            displayName,
+            category,
+            text,
+            likesCount: 0,
+            replyCount: 0,
+            createdAt: serverTimestamp()
+        });
+        document.getElementById('create-post-modal').classList.remove('active');
+        showToast('POST PUBLISHED! 💬', 'success');
+    } catch (e) {
+        console.error('Create post error:', e);
+        showToast('ERROR CREATING POST', 'error');
+    }
+}
+
 // Make functions globally accessible for onclick handlers
 window.removeExerciseTimer = removeExerciseTimer;
 window.deleteProgressPhoto = deleteProgressPhoto;
+window.sendKudos = sendKudos;
+window.toggleReaction   = toggleReaction;
+window.deletePlanComment = deletePlanComment;
+window.showPostDetail    = showPostDetail;
+window.deleteReply       = deleteReply;
+window.deleteForumPost   = deleteForumPost;
 
 // ═════════════════════════════════════════════
 // EVENT LISTENERS
@@ -1820,6 +2818,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('skip-rest-btn').addEventListener('click', skipRest);
     document.getElementById('timer-plus-15').addEventListener('click', () => adjustRestTimer(15));
     document.getElementById('timer-minus-15').addEventListener('click', () => adjustRestTimer(-15));
+    document.getElementById('stopwatch-start-btn').addEventListener('click', toggleStopwatch);
+    document.getElementById('stopwatch-reset-btn').addEventListener('click', resetStopwatch);
     
     // Plan controls
     document.getElementById('create-plan-btn').addEventListener('click', showCreatePlan);
@@ -1869,11 +2869,69 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('library-days-filter').addEventListener('change', renderLibraryPlans);
     document.getElementById('library-search').addEventListener('input', renderLibraryPlans);
     
-    // Plan detail modal
+    // Plan detail modal (library)
     document.getElementById('close-plan-detail-btn').addEventListener('click', closeModal);
     document.getElementById('add-plan-to-account-btn').addEventListener('click', () => {
-        if (currentPlanDetail) {
-            addLibraryPlanToAccount(currentPlanDetail.id);
-        }
+        if (currentPlanDetail) addLibraryPlanToAccount(currentPlanDetail.id);
+    });
+
+    // Community — share plan modal
+    document.getElementById('share-plan-btn').addEventListener('click', openSharePlanModal);
+    document.getElementById('confirm-share-plan-btn').addEventListener('click', confirmSharePlan);
+    document.getElementById('cancel-share-plan-btn').addEventListener('click', closeModal);
+
+    // Community — filters
+    document.getElementById('community-difficulty-filter').addEventListener('change', renderCommunityPlans);
+    document.getElementById('community-sort').addEventListener('change', renderCommunityPlans);
+    document.getElementById('community-search').addEventListener('input', renderCommunityPlans);
+
+    // Community plan detail modal
+    document.getElementById('cpd-enroll-btn').addEventListener('click', () => {
+        if (currentCommunityPlan) enrollInCommunityPlan(currentCommunityPlan.firestoreId);
+    });
+    document.getElementById('cpd-fork-btn').addEventListener('click', () => {
+        if (currentCommunityPlan) forkCommunityPlan(currentCommunityPlan.firestoreId);
+    });
+    document.getElementById('cpd-close-btn').addEventListener('click', () => {
+        document.getElementById('community-plan-detail-modal').classList.remove('active');
+        [unsubscribeSuccessWall, unsubscribeReactions, unsubscribeComments].forEach(fn => fn?.());
+        unsubscribeSuccessWall = unsubscribeReactions = unsubscribeComments = null;
+    });
+
+    // Plan detail — post comment
+    document.getElementById('cpd-post-comment-btn').addEventListener('click', postPlanComment);
+    document.getElementById('cpd-comment-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') postPlanComment();
+    });
+
+    // Community sub-tabs
+    document.querySelectorAll('.community-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchCommunityPane(btn.dataset.pane));
+    });
+
+    // Forum — new post
+    document.getElementById('new-post-btn').addEventListener('click', openCreatePostModal);
+    document.getElementById('confirm-create-post-btn').addEventListener('click', createForumPost);
+    document.getElementById('cancel-create-post-btn').addEventListener('click', closeModal);
+    document.getElementById('post-text-input').addEventListener('input', (e) => {
+        document.getElementById('post-char-count').textContent = e.target.value.length;
+    });
+    document.getElementById('forum-category-filter').addEventListener('change', renderForumPosts);
+    document.getElementById('forum-search').addEventListener('input', renderForumPosts);
+
+    // Post detail modal
+    document.getElementById('pd-like-btn').addEventListener('click', () => {
+        if (currentForumPost) togglePostLike(currentForumPost.firestoreId);
+    });
+    document.getElementById('pd-post-reply-btn').addEventListener('click', postReply);
+    document.getElementById('pd-reply-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') postReply();
+    });
+    document.getElementById('pd-delete-post-btn').addEventListener('click', () => {
+        if (currentForumPost) deleteForumPost(currentForumPost.firestoreId);
+    });
+    document.getElementById('pd-close-btn').addEventListener('click', () => {
+        document.getElementById('post-detail-modal').classList.remove('active');
+        if (unsubscribePostReplies) { unsubscribePostReplies(); unsubscribePostReplies = null; }
     });
 });

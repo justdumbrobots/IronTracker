@@ -1,4 +1,34 @@
-const CACHE = 'iron-track-v1';
+// ─── FCM background messaging (must come before install/activate/fetch) ───────
+// Uses Firebase compat SDK because ES module imports are not
+// universally supported inside service workers.
+importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+    apiKey: "AIzaSyB78UVReJzB467VOIZNukbOoMm1t-TSVBc",
+    authDomain: "iron-tracker-3f59f.firebaseapp.com",
+    projectId: "iron-tracker-3f59f",
+    storageBucket: "iron-tracker-3f59f.firebasestorage.app",
+    messagingSenderId: "990770977639",
+    appId: "1:990770977639:web:934961d8b5abac53b02dc2"
+});
+
+const swMessaging = firebase.messaging();
+
+// Show a notification when the app is in the background
+swMessaging.onBackgroundMessage((payload) => {
+    const title = payload.notification?.title || 'IRON TRACK';
+    const body  = payload.notification?.body  || '';
+    self.registration.showNotification(title, {
+        body,
+        icon:  '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        data:  payload.data || {}
+    });
+});
+
+// ─── PWA caching ──────────────────────────────────────────────────────────────
+const CACHE = 'iron-track-v2';
 const ASSETS = ['/', '/index.html', '/styles.css', '/app.js', '/manifest.json'];
 
 self.addEventListener('install', e => {
