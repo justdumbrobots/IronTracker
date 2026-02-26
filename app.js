@@ -74,6 +74,15 @@ let myEnrollments = new Set();       // Set of community plan Firestore IDs
 let currentCommunityPlan = null;     // Plan shown in detail modal
 let unsubscribeCommunityPlans = null;
 let unsubscribeSuccessWall = null;
+let unsubscribeReactions = null;
+let unsubscribeComments = null;
+
+// Forum state
+let forumPosts = [];
+let myForumLikes = new Set();        // Set of postIds the current user has liked
+let currentForumPost = null;
+let unsubscribeForumPosts = null;
+let unsubscribePostReplies = null;
 
 // ═════════════════════════════════════════════
 // THEME MANAGEMENT
@@ -1031,7 +1040,7 @@ function switchView(viewName) {
         if (libraryPlans.length === 0) loadLibraryPlans();
         else renderLibraryPlans();
     }
-    if (viewName === 'community') loadCommunityPlans();
+    if (viewName === 'community') switchCommunityPane('plans');
     if (viewName === 'progress') renderProgress();
     if (viewName === 'workout') updateWorkoutHero();
 }
@@ -1952,6 +1961,8 @@ function renderCommunityPlans() {
     const search     = document.getElementById('community-search')?.value.toLowerCase() || '';
 
     let filtered = communityPlans.filter(p => {
+        // Show public plans to everyone; show private plans only to the author
+        if (p.visibility === 'private' && p.authorUid !== currentUser?.uid) return false;
         if (diffFilter && p.difficulty !== diffFilter) return false;
         if (search && !p.name.toLowerCase().includes(search) &&
             !p.description?.toLowerCase().includes(search) &&
@@ -2123,6 +2134,7 @@ function openSharePlanModal() {
         ).join('');
     document.getElementById('share-plan-tags').value = '';
     document.getElementById('share-plan-difficulty').value = 'intermediate';
+    document.getElementById('share-plan-visibility').value = 'public';
     document.getElementById('share-plan-modal').classList.add('active');
 }
 
@@ -2137,9 +2149,10 @@ async function confirmSharePlan() {
     const plan = workoutPlans[idx];
     if (!plan) return;
 
-    const difficulty = document.getElementById('share-plan-difficulty').value;
-    const rawTags    = document.getElementById('share-plan-tags').value;
-    const tags       = rawTags.split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
+    const difficulty  = document.getElementById('share-plan-difficulty').value;
+    const visibility  = document.getElementById('share-plan-visibility').value;
+    const rawTags     = document.getElementById('share-plan-tags').value;
+    const tags        = rawTags.split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
     const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete';
 
     try {
@@ -2148,6 +2161,7 @@ async function confirmSharePlan() {
             description: plan.description || '',
             days: plan.days,
             difficulty,
+            visibility,
             tags,
             authorUid: currentUser.uid,
             authorDisplayName: displayName,
@@ -2159,7 +2173,8 @@ async function confirmSharePlan() {
             createdAt: serverTimestamp()
         });
         document.getElementById('share-plan-modal').classList.remove('active');
-        showToast(`${plan.name.toUpperCase()} PUBLISHED! 🚀`, 'success');
+        const label = visibility === 'private' ? 'SAVED PRIVATELY' : 'PUBLISHED TO COMMUNITY 🚀';
+        showToast(`${plan.name.toUpperCase()} — ${label}`, 'success');
     } catch (e) {
         console.error('Share error:', e);
         showToast('ERROR PUBLISHING PLAN', 'error');
@@ -2211,8 +2226,10 @@ function showCommunityPlanDetail(communityPlanId) {
 
     document.getElementById('community-plan-detail-modal').classList.add('active');
 
-    // Start Success Wall live feed
+    // Start all live listeners for this plan
     startSuccessWall(communityPlanId);
+    startPlanReactions(communityPlanId);
+    startPlanComments(communityPlanId);
 }
 
 function startSuccessWall(communityPlanId) {
@@ -2298,10 +2315,430 @@ async function sendKudos(prId, toUid) {
     }
 }
 
+// ─────────────────────────────────────────────
+// COMMUNITY PANE SWITCHING (PLANS | FORUM)
+// ─────────────────────────────────────────────
+function switchCommunityPane(pane) {
+    document.querySelectorAll('.community-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.pane === pane);
+    });
+
+    const plansPane = document.getElementById('community-plans-pane');
+    const forumPane = document.getElementById('community-forum-pane');
+    const sharePlanBtn = document.getElementById('share-plan-btn');
+    const newPostBtn   = document.getElementById('new-post-btn');
+
+    if (pane === 'plans') {
+        plansPane.style.display = '';
+        forumPane.style.display = 'none';
+        sharePlanBtn.style.display = '';
+        newPostBtn.style.display = 'none';
+        loadCommunityPlans();
+    } else {
+        plansPane.style.display = 'none';
+        forumPane.style.display = '';
+        sharePlanBtn.style.display = 'none';
+        newPostBtn.style.display = '';
+        loadForum();
+    }
+}
+
+// ─────────────────────────────────────────────
+// PLAN REACTIONS (emoji toggle per-user)
+// ─────────────────────────────────────────────
+const REACTION_EMOJIS = ['💪', '🔥', '👍', '❤️'];
+
+function startPlanReactions(planId) {
+    if (unsubscribeReactions) { unsubscribeReactions(); unsubscribeReactions = null; }
+
+    unsubscribeReactions = onSnapshot(
+        collection(db, 'community_plans', planId, 'reactions'),
+        (snap) => {
+            const docs = snap.docs.map(d => d.data());
+            renderReactions(planId, docs);
+        },
+        (err) => console.error('Reactions error:', err)
+    );
+}
+
+function renderReactions(planId, reactionDocs) {
+    const bar = document.getElementById('cpd-reactions-bar');
+    if (!bar) return;
+
+    const counts = {};
+    REACTION_EMOJIS.forEach(e => { counts[e] = 0; });
+    reactionDocs.forEach(d => { if (counts[d.emoji] !== undefined) counts[d.emoji]++; });
+
+    const myReaction = reactionDocs.find(d => d.uid === currentUser?.uid)?.emoji || null;
+
+    bar.innerHTML = REACTION_EMOJIS.map(emoji => `
+        <button class="reaction-btn ${myReaction === emoji ? 'active' : ''}"
+                onclick="toggleReaction('${planId}','${emoji}')">
+            ${emoji} <span>${counts[emoji] || ''}</span>
+        </button>
+    `).join('');
+}
+
+async function toggleReaction(planId, emoji) {
+    if (!currentUser) return;
+    const reactionRef = doc(db, 'community_plans', planId, 'reactions', currentUser.uid);
+    try {
+        const snap = await getDoc(reactionRef);
+        if (snap.exists() && snap.data().emoji === emoji) {
+            await deleteDoc(reactionRef);
+        } else {
+            await setDoc(reactionRef, {
+                uid: currentUser.uid,
+                displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete',
+                emoji,
+                reactedAt: serverTimestamp()
+            });
+        }
+    } catch (e) {
+        console.error('Reaction error:', e);
+    }
+}
+
+// ─────────────────────────────────────────────
+// PLAN COMMENTS
+// ─────────────────────────────────────────────
+function startPlanComments(planId) {
+    if (unsubscribeComments) { unsubscribeComments(); unsubscribeComments = null; }
+
+    unsubscribeComments = onSnapshot(
+        query(
+            collection(db, 'community_plans', planId, 'comments'),
+            orderBy('createdAt', 'asc')
+        ),
+        (snap) => renderPlanComments(planId, snap.docs),
+        (err) => console.error('Comments error:', err)
+    );
+}
+
+function renderPlanComments(planId, docs) {
+    const feed  = document.getElementById('cpd-comments-feed');
+    const count = document.getElementById('cpd-comment-count');
+    if (!feed) return;
+    if (count) count.textContent = docs.length;
+
+    if (docs.length === 0) {
+        feed.innerHTML = '<div class="comment-empty">BE THE FIRST TO COMMENT!</div>';
+        return;
+    }
+
+    feed.innerHTML = docs.map(d => {
+        const c = d.data();
+        const isOwn = c.uid === currentUser?.uid;
+        return `
+        <div class="comment-entry">
+            <div class="comment-meta">
+                <span class="comment-author">@${escapeHtml(c.displayName)}</span>
+                <span class="comment-time">${c.createdAt ? formatTimeAgo(c.createdAt.toDate()) : ''}</span>
+                ${isOwn ? `<button class="comment-delete-btn" onclick="deletePlanComment('${planId}','${d.id}')">×</button>` : ''}
+            </div>
+            <div class="comment-text">${escapeHtml(c.text)}</div>
+        </div>`;
+    }).join('');
+
+    // Scroll to bottom so newest comment is visible
+    feed.scrollTop = feed.scrollHeight;
+}
+
+async function postPlanComment() {
+    const input = document.getElementById('cpd-comment-input');
+    const text  = input?.value.trim();
+    if (!text || !currentCommunityPlan || !currentUser) return;
+
+    try {
+        await addDoc(
+            collection(db, 'community_plans', currentCommunityPlan.firestoreId, 'comments'),
+            {
+                uid: currentUser.uid,
+                displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete',
+                text,
+                createdAt: serverTimestamp()
+            }
+        );
+        input.value = '';
+    } catch (e) {
+        console.error('Comment error:', e);
+        showToast('ERROR POSTING COMMENT', 'error');
+    }
+}
+
+async function deletePlanComment(planId, commentId) {
+    try {
+        await deleteDoc(doc(db, 'community_plans', planId, 'comments', commentId));
+    } catch (e) {
+        console.error('Delete comment error:', e);
+    }
+}
+
+// ─────────────────────────────────────────────
+// FORUM
+// ─────────────────────────────────────────────
+async function loadForum() {
+    if (!currentUser) return;
+
+    // Load my likes once on first open
+    if (myForumLikes.size === 0) {
+        try {
+            const snap = await getDocs(
+                query(collection(db, 'forum_likes'), where('uid', '==', currentUser.uid))
+            );
+            snap.forEach(d => myForumLikes.add(d.data().postId));
+        } catch (e) { console.error('Forum likes load error:', e); }
+    }
+
+    if (unsubscribeForumPosts) return; // Already listening
+
+    document.getElementById('forum-posts-list').innerHTML =
+        '<div class="empty-state"><div class="empty-state-icon">💬</div><p>LOADING...</p></div>';
+
+    unsubscribeForumPosts = onSnapshot(
+        query(collection(db, 'forum_posts'), orderBy('createdAt', 'desc'), limit(60)),
+        (snap) => {
+            forumPosts = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+            renderForumPosts();
+        },
+        (err) => {
+            console.error('Forum listener error:', err);
+            document.getElementById('forum-posts-list').innerHTML =
+                '<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>ERROR LOADING FORUM</p></div>';
+        }
+    );
+}
+
+function renderForumPosts() {
+    const list     = document.getElementById('forum-posts-list');
+    if (!list) return;
+    const catFilter = document.getElementById('forum-category-filter')?.value || '';
+    const search    = document.getElementById('forum-search')?.value.toLowerCase() || '';
+
+    let filtered = forumPosts.filter(p => {
+        if (catFilter && p.category !== catFilter) return false;
+        if (search && !p.text.toLowerCase().includes(search) &&
+            !(p.displayName || '').toLowerCase().includes(search)) return false;
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💬</div><p>NO POSTS YET — START THE CONVERSATION!</p></div>';
+        return;
+    }
+
+    const categoryMeta = {
+        supplements: { icon: '💊', label: 'SUPPLEMENTS' },
+        nutrition:   { icon: '🥗', label: 'NUTRITION'   },
+        lifestyle:   { icon: '🌙', label: 'LIFESTYLE'   },
+        training:    { icon: '🧠', label: 'TRAINING TIPS' },
+        general:     { icon: '💬', label: 'GENERAL'     }
+    };
+
+    list.innerHTML = filtered.map(post => {
+        const meta      = categoryMeta[post.category] || { icon: '💬', label: 'GENERAL' };
+        const liked     = myForumLikes.has(post.firestoreId);
+        const preview   = (post.text || '').slice(0, 200) + (post.text?.length > 200 ? '...' : '');
+        const isOwn     = post.uid === currentUser?.uid;
+
+        return `
+        <div class="forum-post-card" onclick="showPostDetail('${post.firestoreId}')">
+            <div class="forum-post-top">
+                <span class="forum-category-badge cat-${post.category}">${meta.icon} ${meta.label}</span>
+                <span class="forum-post-author">@${escapeHtml(post.displayName || 'user')}</span>
+                <span class="forum-post-time">${post.createdAt ? formatTimeAgo(post.createdAt.toDate()) : ''}</span>
+            </div>
+            <p class="forum-post-preview">${escapeHtml(preview)}</p>
+            <div class="forum-post-footer">
+                <span class="forum-stat ${liked ? 'liked' : ''}">❤️ ${post.likesCount || 0}</span>
+                <span class="forum-stat">💬 ${post.replyCount || 0} REPLIES</span>
+                ${isOwn ? `<span class="forum-delete-link" onclick="event.stopPropagation(); deleteForumPost('${post.firestoreId}')">DELETE</span>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function showPostDetail(postId) {
+    const post = forumPosts.find(p => p.firestoreId === postId);
+    if (!post) return;
+    currentForumPost = post;
+
+    const categoryMeta = {
+        supplements: { icon: '💊', label: 'SUPPLEMENTS' },
+        nutrition:   { icon: '🥗', label: 'NUTRITION'   },
+        lifestyle:   { icon: '🌙', label: 'LIFESTYLE'   },
+        training:    { icon: '🧠', label: 'TRAINING TIPS' },
+        general:     { icon: '💬', label: 'GENERAL'     }
+    };
+    const meta = categoryMeta[post.category] || { icon: '💬', label: 'GENERAL' };
+
+    const badge = document.getElementById('pd-category-badge');
+    badge.textContent = `${meta.icon} ${meta.label}`;
+    badge.className = `forum-category-badge cat-${post.category}`;
+    document.getElementById('pd-author').textContent = `@${post.displayName || 'user'}`;
+    document.getElementById('pd-time').textContent = post.createdAt ? formatTimeAgo(post.createdAt.toDate()) : '';
+    document.getElementById('pd-text').textContent = post.text || '';
+    document.getElementById('pd-likes-count').textContent = `${post.likesCount || 0} LIKES`;
+    document.getElementById('pd-reply-count').textContent = post.replyCount || 0;
+
+    const likeBtn = document.getElementById('pd-like-btn');
+    const liked = myForumLikes.has(postId);
+    likeBtn.textContent = liked ? '❤️ LIKED' : '❤️ LIKE';
+    likeBtn.classList.toggle('liked', liked);
+
+    const deleteBtn = document.getElementById('pd-delete-post-btn');
+    deleteBtn.style.display = post.uid === currentUser?.uid ? '' : 'none';
+
+    document.getElementById('pd-reply-input').value = '';
+    document.getElementById('post-detail-modal').classList.add('active');
+
+    startPostReplies(postId);
+}
+
+function startPostReplies(postId) {
+    if (unsubscribePostReplies) { unsubscribePostReplies(); unsubscribePostReplies = null; }
+    unsubscribePostReplies = onSnapshot(
+        query(
+            collection(db, 'forum_posts', postId, 'replies'),
+            orderBy('createdAt', 'asc')
+        ),
+        (snap) => renderReplies(postId, snap.docs),
+        (err) => console.error('Replies error:', err)
+    );
+}
+
+function renderReplies(postId, docs) {
+    const feed = document.getElementById('pd-replies-feed');
+    if (!feed) return;
+
+    if (docs.length === 0) {
+        feed.innerHTML = '<div class="comment-empty">NO REPLIES YET</div>';
+        return;
+    }
+
+    feed.innerHTML = docs.map(d => {
+        const r = d.data();
+        const isOwn = r.uid === currentUser?.uid;
+        return `
+        <div class="comment-entry">
+            <div class="comment-meta">
+                <span class="comment-author">@${escapeHtml(r.displayName)}</span>
+                <span class="comment-time">${r.createdAt ? formatTimeAgo(r.createdAt.toDate()) : ''}</span>
+                ${isOwn ? `<button class="comment-delete-btn" onclick="deleteReply('${postId}','${d.id}')">×</button>` : ''}
+            </div>
+            <div class="comment-text">${escapeHtml(r.text)}</div>
+        </div>`;
+    }).join('');
+    feed.scrollTop = feed.scrollHeight;
+}
+
+async function postReply() {
+    const input = document.getElementById('pd-reply-input');
+    const text  = input?.value.trim();
+    if (!text || !currentForumPost || !currentUser) return;
+
+    try {
+        await addDoc(
+            collection(db, 'forum_posts', currentForumPost.firestoreId, 'replies'),
+            {
+                uid: currentUser.uid,
+                displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete',
+                text,
+                createdAt: serverTimestamp()
+            }
+        );
+        input.value = '';
+    } catch (e) {
+        console.error('Reply error:', e);
+        showToast('ERROR POSTING REPLY', 'error');
+    }
+}
+
+async function deleteReply(postId, replyId) {
+    try {
+        await deleteDoc(doc(db, 'forum_posts', postId, 'replies', replyId));
+    } catch (e) { console.error('Delete reply error:', e); }
+}
+
+async function togglePostLike(postId) {
+    if (!currentUser || !postId) return;
+    const likeId  = `${currentUser.uid}_${postId}`;
+    const likeRef = doc(db, 'forum_likes', likeId);
+
+    try {
+        if (myForumLikes.has(postId)) {
+            await deleteDoc(likeRef);
+            myForumLikes.delete(postId);
+        } else {
+            await setDoc(likeRef, {
+                uid:    currentUser.uid,
+                postId: postId,
+                likedAt: serverTimestamp()
+            });
+            myForumLikes.add(postId);
+        }
+        // Update detail modal button immediately
+        const liked  = myForumLikes.has(postId);
+        const likeBtn = document.getElementById('pd-like-btn');
+        if (likeBtn) { likeBtn.textContent = liked ? '❤️ LIKED' : '❤️ LIKE'; likeBtn.classList.toggle('liked', liked); }
+    } catch (e) {
+        console.error('Like error:', e);
+        showToast('ERROR — TRY AGAIN', 'error');
+    }
+}
+
+async function deleteForumPost(postId) {
+    if (!currentUser) return;
+    if (!confirm('DELETE THIS POST?')) return;
+    try {
+        await deleteDoc(doc(db, 'forum_posts', postId));
+        showToast('POST DELETED', 'info');
+    } catch (e) {
+        console.error('Delete post error:', e);
+        showToast('ERROR DELETING POST', 'error');
+    }
+}
+
+function openCreatePostModal() {
+    document.getElementById('post-text-input').value = '';
+    document.getElementById('post-char-count').textContent = '0';
+    document.getElementById('post-category-select').value = 'general';
+    document.getElementById('create-post-modal').classList.add('active');
+}
+
+async function createForumPost() {
+    const text     = document.getElementById('post-text-input').value.trim();
+    const category = document.getElementById('post-category-select').value;
+    if (!text) { showToast('WRITE SOMETHING FIRST', 'error'); return; }
+
+    const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete';
+    try {
+        await addDoc(collection(db, 'forum_posts'), {
+            uid: currentUser.uid,
+            displayName,
+            category,
+            text,
+            likesCount: 0,
+            replyCount: 0,
+            createdAt: serverTimestamp()
+        });
+        document.getElementById('create-post-modal').classList.remove('active');
+        showToast('POST PUBLISHED! 💬', 'success');
+    } catch (e) {
+        console.error('Create post error:', e);
+        showToast('ERROR CREATING POST', 'error');
+    }
+}
+
 // Make functions globally accessible for onclick handlers
 window.removeExerciseTimer = removeExerciseTimer;
 window.deleteProgressPhoto = deleteProgressPhoto;
 window.sendKudos = sendKudos;
+window.toggleReaction   = toggleReaction;
+window.deletePlanComment = deletePlanComment;
+window.showPostDetail    = showPostDetail;
+window.deleteReply       = deleteReply;
+window.deleteForumPost   = deleteForumPost;
 
 // ═════════════════════════════════════════════
 // EVENT LISTENERS
@@ -2445,6 +2882,44 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('cpd-close-btn').addEventListener('click', () => {
         document.getElementById('community-plan-detail-modal').classList.remove('active');
-        if (unsubscribeSuccessWall) { unsubscribeSuccessWall(); unsubscribeSuccessWall = null; }
+        [unsubscribeSuccessWall, unsubscribeReactions, unsubscribeComments].forEach(fn => fn?.());
+        unsubscribeSuccessWall = unsubscribeReactions = unsubscribeComments = null;
+    });
+
+    // Plan detail — post comment
+    document.getElementById('cpd-post-comment-btn').addEventListener('click', postPlanComment);
+    document.getElementById('cpd-comment-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') postPlanComment();
+    });
+
+    // Community sub-tabs
+    document.querySelectorAll('.community-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchCommunityPane(btn.dataset.pane));
+    });
+
+    // Forum — new post
+    document.getElementById('new-post-btn').addEventListener('click', openCreatePostModal);
+    document.getElementById('confirm-create-post-btn').addEventListener('click', createForumPost);
+    document.getElementById('cancel-create-post-btn').addEventListener('click', closeModal);
+    document.getElementById('post-text-input').addEventListener('input', (e) => {
+        document.getElementById('post-char-count').textContent = e.target.value.length;
+    });
+    document.getElementById('forum-category-filter').addEventListener('change', renderForumPosts);
+    document.getElementById('forum-search').addEventListener('input', renderForumPosts);
+
+    // Post detail modal
+    document.getElementById('pd-like-btn').addEventListener('click', () => {
+        if (currentForumPost) togglePostLike(currentForumPost.firestoreId);
+    });
+    document.getElementById('pd-post-reply-btn').addEventListener('click', postReply);
+    document.getElementById('pd-reply-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') postReply();
+    });
+    document.getElementById('pd-delete-post-btn').addEventListener('click', () => {
+        if (currentForumPost) deleteForumPost(currentForumPost.firestoreId);
+    });
+    document.getElementById('pd-close-btn').addEventListener('click', () => {
+        document.getElementById('post-detail-modal').classList.remove('active');
+        if (unsubscribePostReplies) { unsubscribePostReplies(); unsubscribePostReplies = null; }
     });
 });

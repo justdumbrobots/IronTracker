@@ -211,36 +211,68 @@
             <div id="community-view" class="view">
                 <div class="community-header">
                     <div>
-                        <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px;">COMMUNITY PLANS</h2>
+                        <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px;">COMMUNITY</h2>
                         <p style="color: var(--text-secondary); font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">COMMUNITY-BUILT · COMMUNITY-PROVEN</p>
                     </div>
-                    <button class="btn btn-small" id="share-plan-btn">+ SHARE YOUR PLAN</button>
+                    <div style="display: flex; gap: 8px; align-items: flex-start; flex-shrink: 0;">
+                        <button class="btn btn-small" id="share-plan-btn">+ SHARE PLAN</button>
+                        <button class="btn btn-small" id="new-post-btn" style="display: none;">+ NEW POST</button>
+                    </div>
                 </div>
 
-                <!-- Filters -->
-                <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
-                    <select class="form-input" id="community-difficulty-filter" style="max-width: 200px;">
-                        <option value="">ALL LEVELS</option>
-                        <option value="beginner">BEGINNER</option>
-                        <option value="intermediate">INTERMEDIATE</option>
-                        <option value="advanced">ADVANCED</option>
-                        <option value="specialized">SPECIALIZED</option>
-                    </select>
-                    <select class="form-input" id="community-sort" style="max-width: 220px;">
-                        <option value="newest">NEWEST FIRST</option>
-                        <option value="success">HIGHEST SUCCESS RATE</option>
-                        <option value="popular">MOST ENROLLED</option>
-                    </select>
-                    <input type="text" class="form-input" id="community-search"
-                           placeholder="🔍 SEARCH COMMUNITY PLANS..."
-                           style="flex: 1; min-width: 200px;">
+                <!-- Sub-tabs: PLANS | FORUM -->
+                <div class="community-sub-tabs">
+                    <button class="community-tab active" data-pane="plans">🏋️ PLANS</button>
+                    <button class="community-tab" data-pane="forum">💬 FORUM</button>
                 </div>
 
-                <!-- Community Plan Grid -->
-                <div id="community-grid">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">🏋️</div>
-                        <p>LOADING COMMUNITY PLANS...</p>
+                <!-- ── Plans pane ── -->
+                <div id="community-plans-pane">
+                    <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+                        <select class="form-input" id="community-difficulty-filter" style="max-width: 200px;">
+                            <option value="">ALL LEVELS</option>
+                            <option value="beginner">BEGINNER</option>
+                            <option value="intermediate">INTERMEDIATE</option>
+                            <option value="advanced">ADVANCED</option>
+                            <option value="specialized">SPECIALIZED</option>
+                        </select>
+                        <select class="form-input" id="community-sort" style="max-width: 220px;">
+                            <option value="newest">NEWEST FIRST</option>
+                            <option value="success">HIGHEST SUCCESS RATE</option>
+                            <option value="popular">MOST ENROLLED</option>
+                        </select>
+                        <input type="text" class="form-input" id="community-search"
+                               placeholder="🔍 SEARCH COMMUNITY PLANS..."
+                               style="flex: 1; min-width: 200px;">
+                    </div>
+                    <div id="community-grid">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🏋️</div>
+                            <p>LOADING COMMUNITY PLANS...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Forum pane (hidden initially) ── -->
+                <div id="community-forum-pane" style="display: none;">
+                    <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+                        <select class="form-input" id="forum-category-filter" style="max-width: 220px;">
+                            <option value="">ALL CATEGORIES</option>
+                            <option value="supplements">💊 SUPPLEMENTS</option>
+                            <option value="nutrition">🥗 NUTRITION</option>
+                            <option value="lifestyle">🌙 LIFESTYLE</option>
+                            <option value="training">🧠 TRAINING TIPS</option>
+                            <option value="general">💬 GENERAL</option>
+                        </select>
+                        <input type="text" class="form-input" id="forum-search"
+                               placeholder="🔍 SEARCH FORUM..."
+                               style="flex: 1; min-width: 200px;">
+                    </div>
+                    <div id="forum-posts-list">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">💬</div>
+                            <p>LOADING FORUM...</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -496,6 +528,77 @@
             </div>
         </div>
 
+        <!-- Create Forum Post Modal -->
+        <div id="create-post-modal" class="modal">
+            <div class="modal-content" style="max-width: 560px;">
+                <div class="modal-header">NEW POST</div>
+
+                <div class="form-group">
+                    <label class="form-label">CATEGORY</label>
+                    <select class="form-input" id="post-category-select">
+                        <option value="supplements">💊 SUPPLEMENTS</option>
+                        <option value="nutrition">🥗 NUTRITION</option>
+                        <option value="lifestyle">🌙 LIFESTYLE</option>
+                        <option value="training">🧠 TRAINING TIPS</option>
+                        <option value="general">💬 GENERAL</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">POST</label>
+                    <textarea class="form-input" id="post-text-input" rows="5"
+                              placeholder="WHAT'S ON YOUR MIND? TIPS, QUESTIONS, EXPERIENCES..."
+                              maxlength="2000"
+                              style="resize: vertical; min-height: 100px;"></textarea>
+                    <div style="text-align: right; font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                        <span id="post-char-count">0</span>/2000
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <button class="btn" id="confirm-create-post-btn">POST</button>
+                    <button class="btn btn-secondary" id="cancel-create-post-btn">CANCEL</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Post Detail Modal -->
+        <div id="post-detail-modal" class="modal">
+            <div class="modal-content" style="max-width: 660px;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <span id="pd-category-badge" class="forum-category-badge">GENERAL</span>
+                    <span id="pd-author" style="color: var(--text-secondary); font-size: 13px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: 1px;"></span>
+                    <span id="pd-time" style="color: var(--text-muted); font-size: 12px; margin-left: auto;"></span>
+                </div>
+
+                <p id="pd-text" style="font-size: 15px; line-height: 1.6; margin-bottom: 20px; white-space: pre-wrap;"></p>
+
+                <!-- Like button row -->
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border);">
+                    <button id="pd-like-btn" class="like-btn">❤️ LIKE</button>
+                    <span id="pd-likes-count" style="font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; color: var(--text-secondary);">0 LIKES</span>
+                    <button id="pd-delete-post-btn" class="btn btn-secondary btn-small" style="margin-left: auto; display: none;">🗑️ DELETE</button>
+                </div>
+
+                <!-- Replies -->
+                <div class="comments-header" style="margin-bottom: 12px;">
+                    REPLIES <span id="pd-reply-count" class="comment-count-badge">0</span>
+                </div>
+                <div id="pd-replies-feed" class="comments-feed" style="max-height: 260px;"></div>
+
+                <!-- Reply input -->
+                <div class="comment-input-row" style="margin-top: 12px;">
+                    <input type="text" class="form-input" id="pd-reply-input"
+                           placeholder="ADD A REPLY..." maxlength="1000">
+                    <button class="btn btn-small" id="pd-post-reply-btn">REPLY</button>
+                </div>
+
+                <div style="margin-top: 20px; text-align: right;">
+                    <button class="btn btn-secondary" id="pd-close-btn">CLOSE</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Share Plan Modal -->
         <div id="share-plan-modal" class="modal">
             <div class="modal-content" style="max-width: 560px;">
@@ -515,6 +618,14 @@
                         <option value="intermediate">INTERMEDIATE</option>
                         <option value="advanced">ADVANCED</option>
                         <option value="specialized">SPECIALIZED</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">VISIBILITY</label>
+                    <select class="form-input" id="share-plan-visibility">
+                        <option value="public">🌍 PUBLIC — VISIBLE TO EVERYONE</option>
+                        <option value="private">🔒 PRIVATE — ONLY YOU CAN SEE IT</option>
                     </select>
                 </div>
 
@@ -572,6 +683,22 @@
                         <div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 16px;">
                             LOADING RECENT PRS...
                         </div>
+                    </div>
+                </div>
+
+                <!-- ── Reactions ── -->
+                <div id="cpd-reactions-bar" class="reactions-bar" style="margin-top: 20px;"></div>
+
+                <!-- ── Comments ── -->
+                <div class="comments-section" style="margin-top: 16px;">
+                    <div class="comments-header">
+                        COMMENTS <span id="cpd-comment-count" class="comment-count-badge">0</span>
+                    </div>
+                    <div id="cpd-comments-feed" class="comments-feed"></div>
+                    <div class="comment-input-row">
+                        <input type="text" class="form-input" id="cpd-comment-input"
+                               placeholder="ADD A COMMENT..." maxlength="500">
+                        <button class="btn btn-small" id="cpd-post-comment-btn">POST</button>
                     </div>
                 </div>
 

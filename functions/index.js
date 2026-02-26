@@ -178,6 +178,45 @@ exports.onEnrollmentCreated = functions.firestore
     });
 
 // ═════════════════════════════════════════════
+// TRIGGER 3: new forum reply → increment replyCount
+// ═════════════════════════════════════════════
+exports.onForumReplyCreated = functions.firestore
+    .document('forum_posts/{postId}/replies/{replyId}')
+    .onCreate(async (snap, context) => {
+        const { postId } = context.params;
+        await db.collection('forum_posts').doc(postId).update({
+            replyCount: admin.firestore.FieldValue.increment(1)
+        });
+        return null;
+    });
+
+// ═════════════════════════════════════════════
+// TRIGGER 4: forum like created → increment likesCount
+// TRIGGER 5: forum like deleted → decrement likesCount
+// ═════════════════════════════════════════════
+exports.onForumLikeCreated = functions.firestore
+    .document('forum_likes/{likeId}')
+    .onCreate(async (snap) => {
+        const { postId } = snap.data();
+        if (!postId) return null;
+        await db.collection('forum_posts').doc(postId).update({
+            likesCount: admin.firestore.FieldValue.increment(1)
+        });
+        return null;
+    });
+
+exports.onForumLikeDeleted = functions.firestore
+    .document('forum_likes/{likeId}')
+    .onDelete(async (snap) => {
+        const { postId } = snap.data();
+        if (!postId) return null;
+        await db.collection('forum_posts').doc(postId).update({
+            likesCount: admin.firestore.FieldValue.increment(-1)
+        });
+        return null;
+    });
+
+// ═════════════════════════════════════════════
 // SCHEDULED: check inactive enrolled users
 //   • Runs every hour
 //   • Sends FCM push notification at 48h and 72h inactivity marks

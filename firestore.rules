@@ -9,11 +9,6 @@ service cloud.firestore {
     }
 
     // ── Community plans ───────────────────────────────────────────────
-    // Any authenticated user can read.
-    // Authenticated users can create their own plans (authorUid must match).
-    // Stat counters (enrolledCount, completedCount, successRate) are managed
-    // exclusively by Cloud Functions (admin SDK), so direct client updates
-    // to those fields are blocked.
     match /community_plans/{planId} {
       allow read: if request.auth != null;
 
@@ -27,10 +22,30 @@ service cloud.firestore {
         && request.resource.data.forkDepth >= 0
         && request.resource.data.forkDepth <= 3;
 
-      // Authors may delete their own plans; stat updates are admin-only.
-      allow update: if false;
+      allow update: if false; // Stats managed by Cloud Functions
       allow delete: if request.auth != null
         && resource.data.authorUid == request.auth.uid;
+
+      // ── Per-user emoji reaction (one per user per plan) ──────────────
+      match /reactions/{uid} {
+        allow read: if request.auth != null;
+        allow create, update: if request.auth != null && request.auth.uid == uid
+          && request.resource.data.emoji is string;
+        allow delete: if request.auth != null && request.auth.uid == uid;
+      }
+
+      // ── Plan comments ─────────────────────────────────────────────────
+      match /comments/{commentId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500;
+        allow delete: if request.auth != null
+          && resource.data.uid == request.auth.uid;
+        allow update: if false;
+      }
     }
 
     // ── Plan enrollments ──────────────────────────────────────────────
@@ -73,6 +88,45 @@ service cloud.firestore {
     match /public_plans/{planId} {
       allow read:  if request.auth != null;
       allow write: if false;
+    }
+
+    // ── Forum posts ───────────────────────────────────────────────────
+    // likesCount and replyCount are updated by Cloud Functions only.
+    match /forum_posts/{postId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 2000;
+      allow update: if false; // Cloud Functions update likesCount + replyCount
+      allow delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+
+      // ── Replies ────────────────────────────────────────────────────
+      match /replies/{replyId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000;
+        allow delete: if request.auth != null
+          && resource.data.uid == request.auth.uid;
+        allow update: if false;
+      }
+    }
+
+    // ── Forum likes (doc ID = {uid}_{postId}, prevents double-like) ───
+    match /forum_likes/{likeId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && likeId.matches(request.auth.uid + '_.*')
+        && request.resource.data.uid    == request.auth.uid
+        && request.resource.data.postId is string;
+      allow delete: if request.auth != null
+        && likeId.matches(request.auth.uid + '_.*');
+      allow update: if false;
     }
   }
 }
