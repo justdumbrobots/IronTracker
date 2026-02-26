@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── User private data ─────────────────────────────────────────────
+    // Full access only to the owning user.
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ── Community plans ───────────────────────────────────────────────
+    // Any authenticated user can read.
+    // Authenticated users can create their own plans (authorUid must match).
+    // Stat counters (enrolledCount, completedCount, successRate) are managed
+    // exclusively by Cloud Functions (admin SDK), so direct client updates
+    // to those fields are blocked.
+    match /community_plans/{planId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.resource.data.authorUid == request.auth.uid
+        && request.resource.data.keys().hasAll(['name', 'days', 'authorUid', 'createdAt'])
+        && request.resource.data.enrolledCount  == 0
+        && request.resource.data.completedCount == 0
+        && request.resource.data.successRate    == 0
+        && request.resource.data.forkDepth is int
+        && request.resource.data.forkDepth >= 0
+        && request.resource.data.forkDepth <= 3;
+
+      // Authors may delete their own plans; stat updates are admin-only.
+      allow update: if false;
+      allow delete: if request.auth != null
+        && resource.data.authorUid == request.auth.uid;
+    }
+
+    // ── Plan enrollments ──────────────────────────────────────────────
+    // Users create and read their own enrollment documents.
+    // Status transitions (enrolled → progressing → completed) are handled
+    // exclusively by Cloud Functions to prevent cheating.
+    match /plan_enrollments/{enrollmentId} {
+      allow read: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+
+      allow create: if request.auth != null
+        && request.resource.data.uid    == request.auth.uid
+        && request.resource.data.status == 'enrolled'
+        && request.resource.data.keys().hasAll(['uid', 'planId', 'status', 'enrolledAt']);
+
+      allow update, delete: if false; // Cloud Functions own transitions
+    }
+
+    // ── Plan PRs (Success Wall feed) ──────────────────────────────────
+    // Any authenticated user may read; Cloud Functions write exclusively.
+    match /plan_prs/{prId} {
+      allow read:  if request.auth != null;
+      allow write: if false;
+    }
+
+    // ── Kudos ─────────────────────────────────────────────────────────
+    // Doc ID is {fromUid}_{prId} — the composite key prevents duplicate kudos.
+    // Users cannot give kudos to themselves.
+    match /kudos/{kudosId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.fromUid != request.resource.data.toUid;
+
+      allow update, delete: if false;
+    }
+
+    // ── Public plan library (read-only, admin managed) ────────────────
+    match /public_plans/{planId} {
+      allow read:  if request.auth != null;
+      allow write: if false;
+    }
+  }
+}

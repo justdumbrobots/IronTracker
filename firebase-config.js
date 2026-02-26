@@ -3,6 +3,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAuth } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 import { getFirestore } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 import { getStorage } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js';
+import { getMessaging } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js';
 
 // TODO: Replace with your Firebase config from Firebase Console
 const firebaseConfig = {
@@ -19,5 +20,11 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const messaging = (() => {
+    try { return getMessaging(app); } catch (e) { return null; }
+})();
 
-console.log('✅ Firebase initialized with Auth, Firestore, and Storage');
+// VAPID key from Firebase Console → Project Settings → Cloud Messaging → Web Push Certificates
+export const VAPID_KEY = 'YOUR_VAPID_KEY_HERE';
+
+console.log('✅ Firebase initialized with Auth, Firestore, Storage, and Messaging');

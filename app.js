@@ -1,21 +1,30 @@
 import { EXERCISE_DATABASE } from './EXERCISE_DATABASE.js';
-import { auth, db, storage } from './firebase-config.js';
-import { 
-    signInWithEmailAndPassword, 
+import { auth, db, storage, messaging, VAPID_KEY } from './firebase-config.js';
+import {
+    signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
     GoogleAuthProvider,
     signInWithPopup
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-import { 
-    collection, 
-    doc, 
-    setDoc, 
-    getDoc, 
+import {
+    collection,
+    doc,
+    setDoc,
+    getDoc,
+    getDocs,
+    addDoc,
     updateDoc,
-    onSnapshot
+    deleteDoc,
+    onSnapshot,
+    query,
+    where,
+    orderBy,
+    limit,
+    serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js';
 import {
     ref as storageRef,
     uploadBytes,
@@ -58,6 +67,13 @@ let unsubscribeSnapshot = null;
 // Stopwatch state (AMRAP / EMOM)
 let stopwatchSeconds = 0;
 let stopwatchInterval = null;
+
+// Community plans state
+let communityPlans = [];
+let myEnrollments = new Set();       // Set of community plan Firestore IDs
+let currentCommunityPlan = null;     // Plan shown in detail modal
+let unsubscribeCommunityPlans = null;
+let unsubscribeSuccessWall = null;
 
 // ═════════════════════════════════════════════
 // THEME MANAGEMENT
@@ -115,6 +131,7 @@ function showMainApp() {
     document.getElementById('main-app').style.display = 'block';
     updateProfileUI();
     updateWorkoutHero();
+    initFCM();
 }
 
 async function handleLogin(email, password) {
@@ -1014,6 +1031,7 @@ function switchView(viewName) {
         if (libraryPlans.length === 0) loadLibraryPlans();
         else renderLibraryPlans();
     }
+    if (viewName === 'community') loadCommunityPlans();
     if (viewName === 'progress') renderProgress();
     if (viewName === 'workout') updateWorkoutHero();
 }
@@ -1149,6 +1167,7 @@ function startWorkout() {
         planName: plan.name,
         dayName: nextWorkout.day.dayName,
         dayIndex: nextWorkout.dayIndex,
+        communityPlanId: plan.communityPlanId || null,
         startTime: new Date(),
         date: new Date().toISOString(),
         exercises: nextWorkout.day.exercises.map(ex => ({
@@ -1837,9 +1856,452 @@ function showToast(message) {
     setTimeout(() => toast.style.opacity = '0', 2500);
 }
 
+// ═════════════════════════════════════════════
+// FCM — PUSH NOTIFICATIONS
+// ═════════════════════════════════════════════
+async function initFCM() {
+    if (!messaging || !('Notification' in window)) return;
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+
+        const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+        if (!token || !currentUser) return;
+
+        // Persist token so Cloud Functions can look it up
+        await setDoc(
+            doc(db, 'users', currentUser.uid, 'tokens', 'fcm'),
+            { token, updatedAt: new Date().toISOString() }
+        );
+
+        // Show foreground notifications as toasts
+        onMessage(messaging, (payload) => {
+            const body = payload.notification?.body || '';
+            showToast(body || 'NEW NOTIFICATION');
+        });
+    } catch (e) {
+        // FCM may be blocked by ad-blockers or browser policy — non-fatal
+        console.warn('FCM init skipped:', e.message);
+    }
+}
+
+// ═════════════════════════════════════════════
+// COMMUNITY PLANS
+// ═════════════════════════════════════════════
+
+// ── Helpers ──────────────────────────────────
+function difficultyColor(difficulty) {
+    const map = {
+        beginner: 'var(--success)',
+        intermediate: 'var(--warning)',
+        advanced: 'var(--danger)',
+        specialized: 'var(--primary)'
+    };
+    return map[difficulty] || 'var(--border)';
+}
+
+async function loadMyEnrollments() {
+    if (!currentUser) return;
+    myEnrollments.clear();
+    try {
+        const snap = await getDocs(
+            query(
+                collection(db, 'plan_enrollments'),
+                where('uid', '==', currentUser.uid)
+            )
+        );
+        snap.forEach(d => myEnrollments.add(d.data().planId));
+    } catch (e) {
+        console.error('Error loading enrollments:', e);
+    }
+}
+
+// ── Load & render community plans ────────────
+async function loadCommunityPlans() {
+    if (!currentUser) return;
+
+    document.getElementById('community-grid').innerHTML =
+        '<div class="empty-state"><div class="empty-state-icon">🏋️</div><p>LOADING...</p></div>';
+
+    // Refresh enrollment cache first
+    await loadMyEnrollments();
+
+    // Real-time listener (unsubscribe previous if any)
+    if (unsubscribeCommunityPlans) unsubscribeCommunityPlans();
+
+    unsubscribeCommunityPlans = onSnapshot(
+        query(collection(db, 'community_plans'), orderBy('createdAt', 'desc'), limit(50)),
+        (snap) => {
+            communityPlans = snap.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+            renderCommunityPlans();
+        },
+        (err) => {
+            console.error('Community plans listener error:', err);
+            document.getElementById('community-grid').innerHTML =
+                '<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>ERROR LOADING PLANS</p></div>';
+        }
+    );
+}
+
+function renderCommunityPlans() {
+    const grid = document.getElementById('community-grid');
+    if (!grid) return;
+
+    const diffFilter = document.getElementById('community-difficulty-filter')?.value || '';
+    const sortMode   = document.getElementById('community-sort')?.value || 'newest';
+    const search     = document.getElementById('community-search')?.value.toLowerCase() || '';
+
+    let filtered = communityPlans.filter(p => {
+        if (diffFilter && p.difficulty !== diffFilter) return false;
+        if (search && !p.name.toLowerCase().includes(search) &&
+            !p.description?.toLowerCase().includes(search) &&
+            !(p.tags || []).some(t => t.toLowerCase().includes(search))) return false;
+        return true;
+    });
+
+    if (sortMode === 'success')  filtered.sort((a, b) => (b.successRate || 0) - (a.successRate || 0));
+    if (sortMode === 'popular')  filtered.sort((a, b) => (b.enrolledCount || 0) - (a.enrolledCount || 0));
+    // 'newest' is already the default order from the query
+
+    if (filtered.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><p>NO PLANS MATCH</p></div>';
+        return;
+    }
+
+    grid.innerHTML = filtered.map(plan => {
+        const enrolled  = myEnrollments.has(plan.firestoreId);
+        const dcolor    = difficultyColor(plan.difficulty);
+        const isOwn     = plan.authorUid === currentUser?.uid;
+        const forkLabel = plan.parentPlanId ? '🔀 FORK' : 'ORIGINAL';
+        const tagsHtml  = (plan.tags || []).slice(0, 3).map(t =>
+            `<span class="plan-tag">${escapeHtml(t)}</span>`
+        ).join('');
+
+        return `
+        <div class="community-plan-card" style="border-left-color: ${dcolor};">
+            <div class="cpc-top">
+                <div>
+                    <h3 class="cpc-name">${escapeHtml(plan.name)}</h3>
+                    <div class="cpc-author">BY @${escapeHtml(plan.authorDisplayName || 'unknown')}
+                        ${plan.parentPlanId ? `<span class="cpc-fork-badge">${forkLabel}</span>` : ''}
+                    </div>
+                </div>
+                <span class="difficulty-badge" style="background: ${dcolor};">${escapeHtml(plan.difficulty || '')}</span>
+            </div>
+
+            <p class="cpc-desc">${escapeHtml(plan.description || '')}</p>
+            ${tagsHtml ? `<div class="cpc-tags">${tagsHtml}</div>` : ''}
+
+            <div class="cpc-stats-row">
+                <div class="cpc-stat">
+                    <div class="cpc-stat-val" style="color: var(--success);">${plan.successRate ?? '--'}%</div>
+                    <div class="cpc-stat-lbl">SUCCESS RATE</div>
+                </div>
+                <div class="cpc-stat">
+                    <div class="cpc-stat-val">${plan.enrolledCount || 0}</div>
+                    <div class="cpc-stat-lbl">ENROLLED</div>
+                </div>
+                <div class="cpc-stat">
+                    <div class="cpc-stat-val">${(plan.days || []).length}</div>
+                    <div class="cpc-stat-lbl">DAYS</div>
+                </div>
+            </div>
+
+            <div class="cpc-actions">
+                ${enrolled
+                    ? `<button class="btn btn-small" disabled style="opacity:0.6;">✓ ENROLLED</button>`
+                    : `<button class="btn btn-small cpc-enroll-btn" data-id="${plan.firestoreId}">ENROLL</button>`
+                }
+                ${!isOwn ? `<button class="btn btn-secondary btn-small cpc-fork-btn" data-id="${plan.firestoreId}">🔀 FORK</button>` : ''}
+                <button class="btn btn-secondary btn-small cpc-view-btn" data-id="${plan.firestoreId}">VIEW DETAILS</button>
+            </div>
+        </div>
+        `;
+    }).join('');
+
+    grid.querySelectorAll('.cpc-enroll-btn').forEach(btn =>
+        btn.addEventListener('click', () => enrollInCommunityPlan(btn.dataset.id))
+    );
+    grid.querySelectorAll('.cpc-fork-btn').forEach(btn =>
+        btn.addEventListener('click', () => forkCommunityPlan(btn.dataset.id))
+    );
+    grid.querySelectorAll('.cpc-view-btn').forEach(btn =>
+        btn.addEventListener('click', () => showCommunityPlanDetail(btn.dataset.id))
+    );
+}
+
+// ── Enroll ────────────────────────────────────
+async function enrollInCommunityPlan(communityPlanId) {
+    if (!currentUser) return;
+    if (myEnrollments.has(communityPlanId)) {
+        showToast('ALREADY ENROLLED IN THIS PLAN', 'info');
+        return;
+    }
+
+    const plan = communityPlans.find(p => p.firestoreId === communityPlanId);
+    if (!plan) return;
+
+    try {
+        // 1. Copy plan into user's local workout plans
+        const localPlan = {
+            id: Date.now(),
+            name: plan.name,
+            description: plan.description || '',
+            days: plan.days,
+            communityPlanId,           // Link back to community plan
+            difficulty: plan.difficulty
+        };
+        workoutPlans.push(localPlan);
+        await saveToFirebase();
+
+        // 2. Write enrollment document (Cloud Function increments enrolledCount)
+        await addDoc(collection(db, 'plan_enrollments'), {
+            uid: currentUser.uid,
+            planId: communityPlanId,
+            status: 'enrolled',
+            enrolledAt: serverTimestamp(),
+            lastActivityAt: serverTimestamp(),
+            completedAt: null
+        });
+
+        myEnrollments.add(communityPlanId);
+        renderCommunityPlans();
+        showToast(`ENROLLED IN ${plan.name.toUpperCase()}! 💪`, 'success');
+
+        // Close detail modal if open
+        document.getElementById('community-plan-detail-modal').classList.remove('active');
+    } catch (e) {
+        console.error('Enroll error:', e);
+        showToast('ERROR ENROLLING — TRY AGAIN', 'error');
+    }
+}
+
+// ── Fork ──────────────────────────────────────
+async function forkCommunityPlan(communityPlanId) {
+    if (!currentUser) return;
+
+    const source = communityPlans.find(p => p.firestoreId === communityPlanId);
+    if (!source) return;
+
+    const newDepth = (source.forkDepth || 0) + 1;
+    if (newDepth > 3) {
+        showToast('FORK DEPTH LIMIT REACHED (MAX 3)', 'error');
+        return;
+    }
+
+    const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete';
+
+    try {
+        await addDoc(collection(db, 'community_plans'), {
+            name: `${source.name} (FORK)`,
+            description: source.description || '',
+            days: source.days,
+            difficulty: source.difficulty,
+            tags: source.tags || [],
+            authorUid: currentUser.uid,
+            authorDisplayName: displayName,
+            parentPlanId: communityPlanId,
+            forkDepth: newDepth,
+            enrolledCount: 0,
+            completedCount: 0,
+            successRate: 0,
+            createdAt: serverTimestamp()
+        });
+        showToast('PLAN FORKED — EDIT AND SHARE IT! 🔀', 'success');
+    } catch (e) {
+        console.error('Fork error:', e);
+        showToast('ERROR FORKING PLAN', 'error');
+    }
+}
+
+// ── Share your own plan ───────────────────────
+function openSharePlanModal() {
+    const select = document.getElementById('share-plan-select');
+    select.innerHTML = '<option value="">-- CHOOSE A PLAN --</option>' +
+        workoutPlans.map((p, i) =>
+            `<option value="${i}">${escapeHtml(p.name)}</option>`
+        ).join('');
+    document.getElementById('share-plan-tags').value = '';
+    document.getElementById('share-plan-difficulty').value = 'intermediate';
+    document.getElementById('share-plan-modal').classList.add('active');
+}
+
+async function confirmSharePlan() {
+    const selectEl = document.getElementById('share-plan-select');
+    const idx = parseInt(selectEl.value);
+    if (isNaN(idx) || idx < 0) {
+        showToast('SELECT A PLAN FIRST', 'error');
+        return;
+    }
+
+    const plan = workoutPlans[idx];
+    if (!plan) return;
+
+    const difficulty = document.getElementById('share-plan-difficulty').value;
+    const rawTags    = document.getElementById('share-plan-tags').value;
+    const tags       = rawTags.split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
+    const displayName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete';
+
+    try {
+        await addDoc(collection(db, 'community_plans'), {
+            name: plan.name,
+            description: plan.description || '',
+            days: plan.days,
+            difficulty,
+            tags,
+            authorUid: currentUser.uid,
+            authorDisplayName: displayName,
+            parentPlanId: null,
+            forkDepth: 0,
+            enrolledCount: 0,
+            completedCount: 0,
+            successRate: 0,
+            createdAt: serverTimestamp()
+        });
+        document.getElementById('share-plan-modal').classList.remove('active');
+        showToast(`${plan.name.toUpperCase()} PUBLISHED! 🚀`, 'success');
+    } catch (e) {
+        console.error('Share error:', e);
+        showToast('ERROR PUBLISHING PLAN', 'error');
+    }
+}
+
+// ── Community plan detail + Success Wall ──────
+function showCommunityPlanDetail(communityPlanId) {
+    const plan = communityPlans.find(p => p.firestoreId === communityPlanId);
+    if (!plan) return;
+    currentCommunityPlan = plan;
+
+    document.getElementById('cpd-name').textContent = plan.name;
+    document.getElementById('cpd-author').textContent = `@${plan.authorDisplayName || 'unknown'}`;
+    document.getElementById('cpd-difficulty').textContent = (plan.difficulty || '').toUpperCase();
+    document.getElementById('cpd-success-rate').textContent = `${plan.successRate ?? '--'}%`;
+    document.getElementById('cpd-enrolled').textContent = plan.enrolledCount || 0;
+    document.getElementById('cpd-description').textContent = plan.description || '';
+
+    // Tags
+    const tagsEl = document.getElementById('cpd-tags');
+    tagsEl.innerHTML = (plan.tags || []).map(t =>
+        `<span class="plan-tag">${escapeHtml(t)}</span>`
+    ).join('');
+
+    // Days
+    const daysEl = document.getElementById('cpd-days');
+    daysEl.innerHTML = (plan.days || []).map((day, i) => `
+        <div style="background: var(--bg-card); border: 2px solid var(--border); border-left: 4px solid var(--primary); padding: 16px; margin-bottom: 12px;">
+            <h4 style="font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; text-transform: uppercase; margin-bottom: 12px;">
+                DAY ${i + 1}: ${escapeHtml(day.dayName)}
+            </h4>
+            <div style="display: grid; gap: 6px;">
+                ${(day.exercises || []).map((ex, j) => `
+                    <div style="display: flex; justify-content: space-between; padding: 8px; background: var(--bg-hover); border-left: 3px solid var(--accent);">
+                        <span style="font-size: 13px; font-weight: 600;">${j + 1}. ${escapeHtml(ex.name)}</span>
+                        <span style="color: var(--text-secondary); font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700;">${ex.sets} × ${ex.targetReps}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+
+    // Toggle enroll button label
+    const enrolled = myEnrollments.has(communityPlanId);
+    const enrollBtn = document.getElementById('cpd-enroll-btn');
+    enrollBtn.textContent = enrolled ? '✓ ENROLLED' : 'ENROLL IN THIS PLAN';
+    enrollBtn.disabled = enrolled;
+
+    document.getElementById('community-plan-detail-modal').classList.add('active');
+
+    // Start Success Wall live feed
+    startSuccessWall(communityPlanId);
+}
+
+function startSuccessWall(communityPlanId) {
+    // Unsubscribe previous listener
+    if (unsubscribeSuccessWall) { unsubscribeSuccessWall(); unsubscribeSuccessWall = null; }
+
+    unsubscribeSuccessWall = onSnapshot(
+        query(
+            collection(db, 'plan_prs'),
+            where('planId', '==', communityPlanId),
+            orderBy('achievedAt', 'desc'),
+            limit(20)
+        ),
+        (snap) => renderSuccessWall(snap.docs),
+        (err) => console.error('Success Wall error:', err)
+    );
+}
+
+function renderSuccessWall(docs) {
+    const feed = document.getElementById('success-wall-feed');
+    if (!feed) return;
+
+    if (docs.length === 0) {
+        feed.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">NO PRS YET — BE THE FIRST!</div>';
+        return;
+    }
+
+    feed.innerHTML = docs.map(d => {
+        const pr = d.data();
+        const prId = d.id;
+        const timeAgo = pr.achievedAt ? formatTimeAgo(pr.achievedAt.toDate()) : '';
+        const isOwnPR = pr.uid === currentUser?.uid;
+
+        return `
+        <div class="sw-entry">
+            <div class="sw-entry-body">
+                <span class="sw-name">@${escapeHtml(pr.displayName)}</span>
+                hit a PR on <strong>${escapeHtml(pr.exerciseName)}</strong>
+                — <span class="sw-weight">${pr.weight} × ${pr.reps}</span>
+                ${pr.previousBest > 0 ? `<span class="sw-prev">(prev. best: ${pr.previousBest} lbs)</span>` : ''}
+            </div>
+            <div class="sw-entry-meta">
+                <span class="sw-time">${timeAgo}</span>
+                ${!isOwnPR
+                    ? `<button class="sw-kudos-btn" onclick="sendKudos('${prId}','${pr.uid}')">🥤 KUDOS</button>`
+                    : ''
+                }
+            </div>
+        </div>
+        `;
+    }).join('');
+}
+
+function formatTimeAgo(date) {
+    const diffMs = Date.now() - date.getTime();
+    const mins   = Math.floor(diffMs / 60000);
+    if (mins < 1)   return 'JUST NOW';
+    if (mins < 60)  return `${mins}M AGO`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24)   return `${hrs}H AGO`;
+    return `${Math.floor(hrs / 24)}D AGO`;
+}
+
+// ── Kudos ─────────────────────────────────────
+async function sendKudos(prId, toUid) {
+    if (!currentUser) return;
+    const kudosId = `${currentUser.uid}_${prId}`;
+    try {
+        await setDoc(doc(db, 'kudos', kudosId), {
+            fromUid: currentUser.uid,
+            toUid,
+            planPrId: prId,
+            type: 'shake',
+            sentAt: serverTimestamp()
+        });
+        showToast('KUDOS SENT! 🥤', 'success');
+        // Grey out the button immediately
+        const btn = document.querySelector(`.sw-kudos-btn[onclick="sendKudos('${prId}','${toUid}')"]`);
+        if (btn) { btn.textContent = '✓ KUDOS'; btn.disabled = true; }
+    } catch (e) {
+        // Likely already sent (doc ID collision = duplicate prevention working)
+        showToast('ALREADY SENT KUDOS!', 'info');
+    }
+}
+
 // Make functions globally accessible for onclick handlers
 window.removeExerciseTimer = removeExerciseTimer;
 window.deleteProgressPhoto = deleteProgressPhoto;
+window.sendKudos = sendKudos;
 
 // ═════════════════════════════════════════════
 // EVENT LISTENERS
@@ -1958,11 +2420,31 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('library-days-filter').addEventListener('change', renderLibraryPlans);
     document.getElementById('library-search').addEventListener('input', renderLibraryPlans);
     
-    // Plan detail modal
+    // Plan detail modal (library)
     document.getElementById('close-plan-detail-btn').addEventListener('click', closeModal);
     document.getElementById('add-plan-to-account-btn').addEventListener('click', () => {
-        if (currentPlanDetail) {
-            addLibraryPlanToAccount(currentPlanDetail.id);
-        }
+        if (currentPlanDetail) addLibraryPlanToAccount(currentPlanDetail.id);
+    });
+
+    // Community — share plan modal
+    document.getElementById('share-plan-btn').addEventListener('click', openSharePlanModal);
+    document.getElementById('confirm-share-plan-btn').addEventListener('click', confirmSharePlan);
+    document.getElementById('cancel-share-plan-btn').addEventListener('click', closeModal);
+
+    // Community — filters
+    document.getElementById('community-difficulty-filter').addEventListener('change', renderCommunityPlans);
+    document.getElementById('community-sort').addEventListener('change', renderCommunityPlans);
+    document.getElementById('community-search').addEventListener('input', renderCommunityPlans);
+
+    // Community plan detail modal
+    document.getElementById('cpd-enroll-btn').addEventListener('click', () => {
+        if (currentCommunityPlan) enrollInCommunityPlan(currentCommunityPlan.firestoreId);
+    });
+    document.getElementById('cpd-fork-btn').addEventListener('click', () => {
+        if (currentCommunityPlan) forkCommunityPlan(currentCommunityPlan.firestoreId);
+    });
+    document.getElementById('cpd-close-btn').addEventListener('click', () => {
+        document.getElementById('community-plan-detail-modal').classList.remove('active');
+        if (unsubscribeSuccessWall) { unsubscribeSuccessWall(); unsubscribeSuccessWall = null; }
     });
 });

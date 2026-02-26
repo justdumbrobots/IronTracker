@@ -1232,6 +1232,305 @@ select.form-input:focus {
 }
 
 /* ═══════════════════════════════════════════
+   COMMUNITY PLANS
+   ═══════════════════════════════════════════ */
+
+/* Header row */
+.community-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+/* Plan card */
+.community-plan-card {
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    border-left: 4px solid var(--primary);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.2s, transform 0.15s;
+}
+
+.community-plan-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary-light);
+}
+
+/* Card inner top row */
+.cpc-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.cpc-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 0 0 4px;
+}
+
+.cpc-author {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cpc-fork-badge {
+    background: var(--bg-hover);
+    color: var(--text-muted);
+    padding: 2px 8px;
+    font-size: 10px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.cpc-desc {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.cpc-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* Shared tag style used in library + community */
+.plan-tag {
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    padding: 3px 10px;
+    font-size: 11px;
+    font-family: 'Barlow Condensed', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-left: 3px solid var(--accent);
+}
+
+/* Stats row */
+.cpc-stats-row {
+    display: flex;
+    gap: 20px;
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+}
+
+.cpc-stat {
+    text-align: center;
+    flex: 1;
+}
+
+.cpc-stat-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.cpc-stat-lbl {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-family: 'Barlow Condensed', sans-serif;
+}
+
+/* Card actions */
+.cpc-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* Difficulty badge (used in library + community) */
+.difficulty-badge {
+    color: #fff;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Barlow Condensed', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Community plan detail modal chips */
+.cpd-meta-chip {
+    background: var(--bg-hover);
+    padding: 8px 16px;
+    border-left: 3px solid var(--primary);
+}
+
+.cpd-chip-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-family: 'Barlow Condensed', sans-serif;
+    margin-bottom: 2px;
+}
+
+.cpd-chip-value {
+    font-weight: 700;
+    font-family: 'Barlow Condensed', sans-serif;
+    text-transform: uppercase;
+    font-size: 16px;
+}
+
+/* ── Success Wall ─────────────────────────── */
+.success-wall {
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    border-top: 4px solid var(--success);
+}
+
+.success-wall-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-hover);
+}
+
+.success-wall-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.success-wall-live {
+    font-size: 11px;
+    color: var(--success);
+    font-weight: 700;
+    letter-spacing: 2px;
+    animation: pulse-live 2s ease-in-out infinite;
+}
+
+@keyframes pulse-live {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+}
+
+.success-wall-feed {
+    padding: 8px 0;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+/* Individual PR entry */
+.sw-entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    animation: sw-slide-in 0.3s ease-out;
+}
+
+.sw-entry:last-child { border-bottom: none; }
+
+@keyframes sw-slide-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+.sw-entry-body {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.sw-name {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-family: 'Barlow Condensed', sans-serif;
+    text-transform: uppercase;
+    font-size: 14px;
+}
+
+.sw-weight {
+    color: var(--primary);
+    font-weight: 700;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+}
+
+.sw-prev {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.sw-entry-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.sw-time {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 1px;
+}
+
+.sw-kudos-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 3px 10px;
+    font-size: 11px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sw-kudos-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.sw-kudos-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+/* ── Responsive adjustments ───────────────── */
+@media (max-width: 480px) {
+    .cpc-stat-val { font-size: 22px; }
+    .cpc-stats-row { gap: 10px; }
+    .success-wall-feed { max-height: 220px; }
+}
+
+/* ═══════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════ */
 

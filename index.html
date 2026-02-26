@@ -109,6 +109,7 @@
                         <button class="nav-tab active" data-view="workout">WORKOUT</button>
                         <button class="nav-tab" data-view="plans">MY PLANS</button>
                         <button class="nav-tab" data-view="library">LIBRARY</button>
+                        <button class="nav-tab" data-view="community">COMMUNITY</button>
                         <button class="nav-tab" data-view="progress">PROGRESS</button>
                         <button class="nav-tab" data-view="profile">PROFILE</button>
                     </nav>
@@ -203,6 +204,44 @@
                 <!-- Library Grid -->
                 <div class="workout-plans-grid" id="library-grid">
                     <div class="empty-state"><div class="empty-state-icon">📚</div><p>LOADING PLAN LIBRARY...</p></div>
+                </div>
+            </div>
+
+            <!-- COMMUNITY VIEW -->
+            <div id="community-view" class="view">
+                <div class="community-header">
+                    <div>
+                        <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px;">COMMUNITY PLANS</h2>
+                        <p style="color: var(--text-secondary); font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">COMMUNITY-BUILT · COMMUNITY-PROVEN</p>
+                    </div>
+                    <button class="btn btn-small" id="share-plan-btn">+ SHARE YOUR PLAN</button>
+                </div>
+
+                <!-- Filters -->
+                <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+                    <select class="form-input" id="community-difficulty-filter" style="max-width: 200px;">
+                        <option value="">ALL LEVELS</option>
+                        <option value="beginner">BEGINNER</option>
+                        <option value="intermediate">INTERMEDIATE</option>
+                        <option value="advanced">ADVANCED</option>
+                        <option value="specialized">SPECIALIZED</option>
+                    </select>
+                    <select class="form-input" id="community-sort" style="max-width: 220px;">
+                        <option value="newest">NEWEST FIRST</option>
+                        <option value="success">HIGHEST SUCCESS RATE</option>
+                        <option value="popular">MOST ENROLLED</option>
+                    </select>
+                    <input type="text" class="form-input" id="community-search"
+                           placeholder="🔍 SEARCH COMMUNITY PLANS..."
+                           style="flex: 1; min-width: 200px;">
+                </div>
+
+                <!-- Community Plan Grid -->
+                <div id="community-grid">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🏋️</div>
+                        <p>LOADING COMMUNITY PLANS...</p>
+                    </div>
                 </div>
             </div>
 
@@ -453,6 +492,94 @@
                 <div style="display: flex; gap: 12px; margin-top: 30px;">
                     <button class="btn" id="save-timer-btn">SAVE</button>
                     <button class="btn btn-secondary" id="cancel-timer-btn">CANCEL</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Share Plan Modal -->
+        <div id="share-plan-modal" class="modal">
+            <div class="modal-content" style="max-width: 560px;">
+                <div class="modal-header">SHARE YOUR PLAN</div>
+
+                <div class="form-group">
+                    <label class="form-label">SELECT PLAN TO SHARE</label>
+                    <select class="form-input" id="share-plan-select">
+                        <option value="">-- CHOOSE A PLAN --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">DIFFICULTY</label>
+                    <select class="form-input" id="share-plan-difficulty">
+                        <option value="beginner">BEGINNER</option>
+                        <option value="intermediate">INTERMEDIATE</option>
+                        <option value="advanced">ADVANCED</option>
+                        <option value="specialized">SPECIALIZED</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">TAGS (COMMA SEPARATED)</label>
+                    <input type="text" class="form-input" id="share-plan-tags"
+                           placeholder="E.G. PPL, HYPERTROPHY, STRENGTH">
+                </div>
+
+                <div style="display: flex; gap: 12px; margin-top: 30px;">
+                    <button class="btn" id="confirm-share-plan-btn">PUBLISH TO COMMUNITY</button>
+                    <button class="btn btn-secondary" id="cancel-share-plan-btn">CANCEL</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Community Plan Detail Modal -->
+        <div id="community-plan-detail-modal" class="modal">
+            <div class="modal-content" style="max-width: 740px;">
+                <div class="modal-header" id="cpd-name">PLAN NAME</div>
+
+                <!-- Meta row -->
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+                    <div class="cpd-meta-chip">
+                        <div class="cpd-chip-label">AUTHOR</div>
+                        <div class="cpd-chip-value" id="cpd-author">@user</div>
+                    </div>
+                    <div class="cpd-meta-chip">
+                        <div class="cpd-chip-label">DIFFICULTY</div>
+                        <div class="cpd-chip-value" id="cpd-difficulty">INTERMEDIATE</div>
+                    </div>
+                    <div class="cpd-meta-chip" style="border-left-color: var(--success);">
+                        <div class="cpd-chip-label">SUCCESS RATE</div>
+                        <div class="cpd-chip-value" id="cpd-success-rate" style="color: var(--success);">--%</div>
+                    </div>
+                    <div class="cpd-meta-chip">
+                        <div class="cpd-chip-label">ENROLLED</div>
+                        <div class="cpd-chip-value" id="cpd-enrolled">0</div>
+                    </div>
+                </div>
+
+                <p style="color: var(--text-secondary); margin-bottom: 16px;" id="cpd-description"></p>
+                <div id="cpd-tags" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px;"></div>
+
+                <!-- Plan days (scrollable) -->
+                <div style="max-height: 300px; overflow-y: auto; margin-bottom: 24px;" id="cpd-days"></div>
+
+                <!-- ── Success Wall ── -->
+                <div class="success-wall">
+                    <div class="success-wall-header">
+                        <span class="success-wall-title">SUCCESS WALL</span>
+                        <span class="success-wall-live">● LIVE</span>
+                    </div>
+                    <div id="success-wall-feed" class="success-wall-feed">
+                        <div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 16px;">
+                            LOADING RECENT PRS...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
+                    <button class="btn" id="cpd-enroll-btn">ENROLL IN THIS PLAN</button>
+                    <button class="btn btn-secondary" id="cpd-fork-btn">🔀 FORK PLAN</button>
+                    <button class="btn btn-secondary" id="cpd-close-btn" style="margin-left: auto;">CLOSE</button>
                 </div>
             </div>
         </div>
