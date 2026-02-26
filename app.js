@@ -48,6 +48,10 @@ let restTimerSettings = {
 let progressPhotos = [];
 let profilePhotoURL = null;
 
+// Library plans
+let libraryPlans = [];
+let currentPlanDetail = null;
+
 let currentUser = null;
 let unsubscribeSnapshot = null;
 
@@ -303,6 +307,197 @@ function updateLastSyncTime() {
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     document.getElementById('last-sync').textContent = timeStr;
+}
+
+// ═════════════════════════════════════════════
+// PLAN LIBRARY
+// ═════════════════════════════════════════════
+async function loadLibraryPlans() {
+    if (!currentUser) return;
+    
+    try {
+        const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+        const querySnapshot = await getDocs(collection(db, 'public_plans'));
+        
+        libraryPlans = [];
+        querySnapshot.forEach((doc) => {
+            libraryPlans.push({ ...doc.data(), firestoreId: doc.id });
+        });
+        
+        renderLibraryPlans();
+    } catch (error) {
+        console.error('Error loading library plans:', error);
+        document.getElementById('library-grid').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📚</div><p>NO PLANS AVAILABLE. UPLOAD PLANS TO FIREBASE FIRST.</p></div>';
+    }
+}
+
+function renderLibraryPlans() {
+    const grid = document.getElementById('library-grid');
+    
+    if (!libraryPlans || libraryPlans.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📚</div><p>NO PLANS AVAILABLE</p></div>';
+        return;
+    }
+    
+    // Get filter values
+    const difficultyFilter = document.getElementById('library-difficulty-filter')?.value || '';
+    const daysFilter = document.getElementById('library-days-filter')?.value || '';
+    const searchTerm = document.getElementById('library-search')?.value.toLowerCase() || '';
+    
+    // Filter plans
+    let filtered = libraryPlans.filter(plan => {
+        const matchesDifficulty = !difficultyFilter || plan.difficulty === difficultyFilter;
+        const matchesDays = !daysFilter || plan.daysPerWeek === parseInt(daysFilter);
+        const matchesSearch = !searchTerm || 
+            plan.name.toLowerCase().includes(searchTerm) ||
+            plan.description.toLowerCase().includes(searchTerm) ||
+            (plan.tags && plan.tags.some(tag => tag.toLowerCase().includes(searchTerm)));
+        
+        return matchesDifficulty && matchesDays && matchesSearch;
+    });
+    
+    if (filtered.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><p>NO PLANS MATCH YOUR FILTERS</p></div>';
+        return;
+    }
+    
+    grid.innerHTML = filtered.map(plan => {
+        const totalExercises = plan.days.reduce((sum, day) => sum + day.exercises.length, 0);
+        const totalSets = plan.days.reduce((sum, day) => 
+            sum + day.exercises.reduce((s, e) => s + e.sets, 0), 0);
+        
+        // Check if user already has this plan
+        const alreadyAdded = workoutPlans.some(p => p.libraryId === plan.id);
+        
+        // Get difficulty badge color
+        let difficultyColor = 'var(--success)';
+        if (plan.difficulty === 'intermediate') difficultyColor = 'var(--warning)';
+        if (plan.difficulty === 'advanced') difficultyColor = 'var(--danger)';
+        if (plan.difficulty === 'specialized') difficultyColor = 'var(--primary)';
+        
+        return `
+        <div class="plan-card" style="border-left: 4px solid ${difficultyColor};">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                <h3>${escapeHtml(plan.name)}</h3>
+                <span style="background: ${difficultyColor}; color: white; padding: 4px 12px; font-size: 11px; font-weight: 700; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: 1px;">${escapeHtml(plan.difficulty)}</span>
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 10px; font-size: 14px;">${escapeHtml(plan.description)}</p>
+            
+            ${plan.tags && plan.tags.length > 0 ? `
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                    ${plan.tags.slice(0, 3).map(tag => `
+                        <span style="background: var(--bg-hover); color: var(--text-secondary); padding: 3px 10px; font-size: 11px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: 1px;">
+                            🏷️ ${escapeHtml(tag)}
+                        </span>
+                    `).join('')}
+                </div>
+            ` : ''}
+            
+            <div class="plan-meta">
+                <span>📅 ${plan.days.length} DAY${plan.days.length > 1 ? 'S' : ''}</span>
+                <span>📋 ${totalExercises} EXERCISES</span>
+                <span>💪 ${totalSets} SETS</span>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
+                <button class="btn btn-small view-plan-btn" data-plan-id="${escapeHtml(plan.id)}">👁️ VIEW DETAILS</button>
+                ${alreadyAdded ? 
+                    `<button class="btn btn-small" disabled style="opacity: 0.6;">✓ ADDED</button>` :
+                    `<button class="btn btn-secondary btn-small add-library-plan-btn" data-plan-id="${escapeHtml(plan.id)}">➕ ADD TO MY PLANS</button>`
+                }
+            </div>
+        </div>
+    `;
+    }).join('');
+    
+    // Add event listeners
+    document.querySelectorAll('.view-plan-btn').forEach(btn => {
+        btn.addEventListener('click', () => showPlanDetail(btn.dataset.planId));
+    });
+    document.querySelectorAll('.add-library-plan-btn').forEach(btn => {
+        btn.addEventListener('click', () => addLibraryPlanToAccount(btn.dataset.planId));
+    });
+}
+
+function showPlanDetail(planId) {
+    const plan = libraryPlans.find(p => p.id === planId);
+    if (!plan) return;
+    
+    currentPlanDetail = plan;
+    
+    // Populate modal
+    document.getElementById('plan-detail-name').textContent = plan.name;
+    document.getElementById('plan-detail-difficulty').textContent = plan.difficulty.toUpperCase();
+    document.getElementById('plan-detail-schedule').textContent = `${plan.daysPerWeek} DAYS/WEEK`;
+    
+    const totalExercises = plan.days.reduce((sum, day) => sum + day.exercises.length, 0);
+    const totalSets = plan.days.reduce((sum, day) => 
+        sum + day.exercises.reduce((s, e) => s + e.sets, 0), 0);
+    document.getElementById('plan-detail-total').textContent = `${totalExercises} EXERCISES · ${totalSets} SETS`;
+    document.getElementById('plan-detail-description').textContent = plan.description;
+    
+    // Tags
+    const tagsEl = document.getElementById('plan-detail-tags');
+    if (plan.tags && plan.tags.length > 0) {
+        tagsEl.innerHTML = plan.tags.map(tag => `
+            <span style="background: var(--bg-hover); color: var(--text-secondary); padding: 6px 14px; font-size: 12px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: 1px; border-left: 3px solid var(--accent);">
+                🏷️ ${escapeHtml(tag)}
+            </span>
+        `).join('');
+    } else {
+        tagsEl.innerHTML = '';
+    }
+    
+    // Days and exercises
+    const daysEl = document.getElementById('plan-detail-days');
+    daysEl.innerHTML = plan.days.map((day, index) => `
+        <div style="background: var(--bg-card); border: 2px solid var(--border); padding: 20px; margin-bottom: 16px; border-left: 4px solid var(--primary);">
+            <h4 style="font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 800; text-transform: uppercase; margin-bottom: 16px; letter-spacing: 1px;">
+                DAY ${index + 1}: ${escapeHtml(day.dayName)}
+            </h4>
+            <div style="display: grid; gap: 8px;">
+                ${day.exercises.map((ex, exIdx) => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg-hover); border-left: 3px solid var(--accent);">
+                        <span style="font-weight: 600; font-size: 14px;">${exIdx + 1}. ${escapeHtml(ex.name)}</span>
+                        <span style="color: var(--text-secondary); font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700;">
+                            ${ex.sets} × ${ex.targetReps}
+                        </span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `).join('');
+    
+    // Show modal
+    document.getElementById('plan-detail-modal').classList.add('active');
+}
+
+function addLibraryPlanToAccount(planId) {
+    const plan = libraryPlans.find(p => p.id === planId);
+    if (!plan) return;
+    
+    // Check if already added
+    if (workoutPlans.some(p => p.libraryId === planId)) {
+        showToast('PLAN ALREADY IN YOUR ACCOUNT');
+        return;
+    }
+    
+    // Add to user's plans
+    const newPlan = {
+        id: Date.now(),
+        libraryId: planId, // Track which library plan this came from
+        name: plan.name,
+        description: plan.description,
+        days: plan.days
+    };
+    
+    workoutPlans.push(newPlan);
+    saveToFirebase();
+    renderLibraryPlans();
+    
+    showToast(`✓ ${plan.name.toUpperCase()} ADDED!`);
+    
+    // Close detail modal if open
+    closeModal();
 }
 
 // ═════════════════════════════════════════════
@@ -772,6 +967,10 @@ function switchView(viewName) {
     const targetTab = document.querySelector(`[data-view="${viewName}"]`);
     if (targetTab) targetTab.classList.add('active');
     if (viewName === 'plans') renderPlans();
+    if (viewName === 'library') {
+        if (libraryPlans.length === 0) loadLibraryPlans();
+        else renderLibraryPlans();
+    }
     if (viewName === 'progress') renderProgress();
     if (viewName === 'workout') updateWorkoutHero();
 }
@@ -1649,5 +1848,18 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('profile-photo-input').addEventListener('change', (e) => {
         const file = e.target.files[0];
         if (file) uploadProfilePhoto(file);
+    });
+    
+    // Library filters
+    document.getElementById('library-difficulty-filter').addEventListener('change', renderLibraryPlans);
+    document.getElementById('library-days-filter').addEventListener('change', renderLibraryPlans);
+    document.getElementById('library-search').addEventListener('input', renderLibraryPlans);
+    
+    // Plan detail modal
+    document.getElementById('close-plan-detail-btn').addEventListener('click', closeModal);
+    document.getElementById('add-plan-to-account-btn').addEventListener('click', () => {
+        if (currentPlanDetail) {
+            addLibraryPlanToAccount(currentPlanDetail.id);
+        }
     });
 });
