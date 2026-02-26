@@ -1,5 +1,5 @@
 import { EXERCISE_DATABASE } from './EXERCISE_DATABASE.js';
-import { auth, db, storage } from './firebase-config-enhanced.js';
+import { auth, db, storage } from './firebase-config.js';
 import { 
     signInWithEmailAndPassword, 
     createUserWithEmailAndPassword,
