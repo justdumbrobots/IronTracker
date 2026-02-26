@@ -910,30 +910,44 @@ async function loadProfilePhoto() {
         profilePhotoURL = url;
         
         const avatarContainer = document.getElementById('user-avatar-container');
-        avatarContainer.innerHTML = `<img src="${url}" class="profile-photo" alt="Profile">`;
+        if (avatarContainer) {
+            avatarContainer.innerHTML = `<img src="${url}" class="profile-photo" alt="Profile" style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 4px solid var(--primary); box-shadow: 0 8px 24px rgba(196, 30, 58, 0.4);">`;
+        }
     } catch (error) {
-        // No profile photo, show initial
+        // No profile photo exists, show initial
         const email = currentUser.email;
         const initial = email.charAt(0).toUpperCase();
         const avatarEl = document.getElementById('user-avatar');
         if (avatarEl) {
             avatarEl.textContent = initial;
         }
+        profilePhotoURL = null;
     }
 }
 
 async function uploadProfilePhoto(file) {
     if (!currentUser) return;
     
+    if (!file.type.startsWith('image/')) {
+        alert('PLEASE SELECT AN IMAGE FILE');
+        return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+        alert('IMAGE TOO LARGE (MAX 5MB)');
+        return;
+    }
+    
     const photoRef = storageRef(storage, `users/${currentUser.uid}/photos/profile.jpg`);
     
     try {
+        showToast('UPLOADING PHOTO...');
         await uploadBytes(photoRef, file);
         showToast('PROFILE PHOTO UPDATED! 📷');
         await loadProfilePhoto();
     } catch (error) {
         console.error('Error uploading profile photo:', error);
-        alert('PHOTO UPLOAD FAILED');
+        alert('PHOTO UPLOAD FAILED: ' + error.message);
     }
 }
 
