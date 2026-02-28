@@ -28,8 +28,12 @@ swMessaging.onBackgroundMessage((payload) => {
 });
 
 // ─── PWA caching ──────────────────────────────────────────────────────────────
-const CACHE = 'iron-track-v2';
-const ASSETS = ['/', '/index.html', '/styles.css', '/app.js', '/manifest.json'];
+const CACHE = 'iron-track-v5';
+const ASSETS = [
+    '/', '/index.html', '/styles.css', '/app.js', '/manifest.json',
+    '/favicon-16x16.png', '/favicon-32x32.png', '/apple-touch-icon.png',
+    '/android-chrome-192x192.png', '/android-chrome-512x512.png'
+];
 
 self.addEventListener('install', e => {
     e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
