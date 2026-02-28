@@ -28,7 +28,7 @@ swMessaging.onBackgroundMessage((payload) => {
 });
 
 // ─── PWA caching ──────────────────────────────────────────────────────────────
-const CACHE = 'iron-track-v2';
+const CACHE = 'iron-track-v3';
 const ASSETS = ['/', '/index.html', '/styles.css', '/app.js', '/manifest.json'];
 
 self.addEventListener('install', e => {

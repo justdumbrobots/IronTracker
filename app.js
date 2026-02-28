@@ -1338,6 +1338,9 @@ function startRestTimer(seconds) {
     clearInterval(restInterval);
     const timerEl = document.getElementById('rest-timer');
     const displayEl = document.getElementById('timer-display');
+    // Pin banner flush below the sticky header (height varies on mobile)
+    const header = document.querySelector('header');
+    if (header) timerEl.style.top = header.getBoundingClientRect().height + 'px';
     timerEl.classList.add('active');
     currentRestSeconds = seconds;
 

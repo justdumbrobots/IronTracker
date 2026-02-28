@@ -585,30 +585,58 @@ header {
    ═══════════════════════════════════════════ */
 
 .rest-timer {
-    background: linear-gradient(135deg, var(--bg-card), var(--bg-hover));
-    border: 3px solid var(--primary);
-    border-radius: 0;
-    padding: 40px;
-    text-align: center;
-    margin-top: 24px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    z-index: 101;
+    background: var(--bg-card);
+    border-bottom: 3px solid var(--primary);
+    padding: 10px 20px;
     display: none;
-    box-shadow: 0 10px 40px rgba(196, 30, 58, 0.3);
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    box-shadow: 0 4px 20px rgba(196, 30, 58, 0.35);
 }
 
 .rest-timer.active {
-    display: block;
+    display: flex;
     animation: timerPulse 2s infinite;
 }
 
 @keyframes timerPulse {
-    0%, 100% {
-        border-color: var(--primary);
-    }
-    50% {
-        border-color: var(--primary-light);
-    }
+    0%, 100% { border-bottom-color: var(--primary); }
+    50%       { border-bottom-color: var(--primary-light); }
 }
 
+.rest-timer .timer-display {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--primary);
+    text-shadow: 0 0 12px rgba(196, 30, 58, 0.5);
+    line-height: 1;
+    margin: 0;
+}
+
+.rest-timer .timer-label {
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-size: 12px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+}
+
+.rest-timer .timer-controls {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin: 0;
+}
+
+/* Standalone .timer-display used by stopwatch (not inside .rest-timer) */
 .timer-display {
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 72px;
@@ -1882,5 +1910,18 @@ select.form-input:focus {
         white-space: nowrap;
         padding: 10px 14px;
         font-size: 12px;
+    }
+
+    .rest-timer {
+        gap: 12px;
+        padding: 8px 12px;
+    }
+
+    .rest-timer .timer-display {
+        font-size: 28px;
+    }
+
+    .rest-timer .timer-controls {
+        gap: 6px;
     }
 }
