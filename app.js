@@ -1180,15 +1180,20 @@ function startWorkout() {
         communityPlanId: plan.communityPlanId || null,
         startTime: new Date(),
         date: new Date().toISOString(),
-        exercises: nextWorkout.day.exercises.map(ex => ({
-            name: ex.name,
-            targetReps: ex.targetReps,
-            sets: Array.from({ length: ex.sets }, (_, i) => {
-                const lastSets = getLastRawSets(ex.name);
-                const prev = lastSets?.[i];
-                return { weight: prev?.weight || '', reps: prev?.reps || '', completed: false };
-            })
-        }))
+        exercises: nextWorkout.day.exercises.map(ex => {
+            const lastSets = getLastRawSets(ex.name);
+            const lastEx = getLastExerciseEntry(ex.name);
+            return {
+                name: ex.name,
+                targetReps: ex.targetReps,
+                weightUnit: lastEx?.weightUnit || 'lbs',
+                repUnit: lastEx?.repUnit || 'reps',
+                sets: Array.from({ length: ex.sets }, (_, i) => {
+                    const prev = lastSets?.[i];
+                    return { weight: prev?.weight || '', reps: prev?.reps || '', completed: false };
+                })
+            };
+        })
     };
     
     document.getElementById('workout-hero').style.display = 'none';
@@ -1214,26 +1219,40 @@ function renderActiveWorkout() {
     const container = document.getElementById('exercise-container');
     container.innerHTML = currentWorkout.exercises.map((ex, exIndex) => {
         const lastPerf = getLastPerformance(ex.name);
+        const wUnit = ex.weightUnit || 'lbs';
+        const rUnit = ex.repUnit || 'reps';
+        const wPlaceholder = wUnit === 'miles' ? 'MI' : 'LBS';
+        const rPlaceholder = rUnit === 'time' ? 'SECS' : 'REPS';
         return `
             <div class="exercise-item">
                 <div class="exercise-header">
                     <div class="exercise-name">${escapeHtml(ex.name)}</div>
-                    ${lastPerf ? `<div class="last-performance">LAST: ${escapeHtml(lastPerf)}</div>` : '<div class="last-performance">FIRST TIME!</div>'}
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        ${lastPerf ? `<div class="last-performance">LAST: ${escapeHtml(lastPerf)}</div>` : '<div class="last-performance">FIRST TIME!</div>'}
+                        <select class="unit-select" data-ex="${exIndex}" data-field="weightUnit">
+                            <option value="lbs" ${wUnit !== 'miles' ? 'selected' : ''}>LBS</option>
+                            <option value="miles" ${wUnit === 'miles' ? 'selected' : ''}>MILES</option>
+                        </select>
+                        <select class="unit-select" data-ex="${exIndex}" data-field="repUnit">
+                            <option value="reps" ${rUnit !== 'time' ? 'selected' : ''}>REPS</option>
+                            <option value="time" ${rUnit === 'time' ? 'selected' : ''}>TIME</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="sets-grid">
                     ${ex.sets.map((set, setIndex) => `
                         <div class="set-box ${set.completed ? 'completed' : ''}">
                             <div class="set-number">SET ${setIndex + 1}</div>
                             <div class="set-input-group">
-                                <input type="number" inputmode="decimal" class="set-input" placeholder="LBS"
+                                <input type="number" inputmode="decimal" class="set-input" placeholder="${wPlaceholder}"
                                     value="${set.weight}" data-ex="${exIndex}" data-set="${setIndex}" data-field="weight"
                                     ${set.completed ? 'disabled' : ''}>
-                                <input type="number" inputmode="numeric" class="set-input" placeholder="REPS"
+                                <input type="number" inputmode="numeric" class="set-input" placeholder="${rPlaceholder}"
                                     value="${set.reps}" data-ex="${exIndex}" data-set="${setIndex}" data-field="reps"
                                     ${set.completed ? 'disabled' : ''}>
                             </div>
                             ${set.completed ?
-                                `<div style="color: var(--success); margin-top: 8px; font-weight: 600; font-size: 13px; font-family: 'Barlow Condensed', sans-serif;">✓ DONE - ${set.weight}×${set.reps}</div>` :
+                                `<div style="color: var(--success); margin-top: 8px; font-weight: 600; font-size: 13px; font-family: 'Barlow Condensed', sans-serif;">✓ DONE - ${set.weight} ${wUnit === 'miles' ? 'MI' : 'LBS'} × ${set.reps} ${rUnit === 'time' ? 'S' : 'REPS'}</div>` :
                                 `<button class="complete-set-btn" data-ex="${exIndex}" data-set="${setIndex}">✓ COMPLETE</button>`
                             }
                         </div>
@@ -1250,6 +1269,14 @@ function renderActiveWorkout() {
             currentWorkout.exercises[ex].sets[set][field] = e.target.value;
         });
     });
+    container.querySelectorAll('.unit-select').forEach(sel => {
+        sel.addEventListener('change', (e) => {
+            const ex = parseInt(e.target.dataset.ex);
+            const field = e.target.dataset.field;
+            currentWorkout.exercises[ex][field] = e.target.value;
+            renderActiveWorkout();
+        });
+    });
     container.querySelectorAll('.complete-set-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const ex = parseInt(btn.dataset.ex);
@@ -1260,9 +1287,12 @@ function renderActiveWorkout() {
 }
 
 function completeSet(exIndex, setIndex) {
-    const set = currentWorkout.exercises[exIndex].sets[setIndex];
-    const exerciseName = currentWorkout.exercises[exIndex].name;
-    
+    const ex = currentWorkout.exercises[exIndex];
+    const set = ex.sets[setIndex];
+    const exerciseName = ex.name;
+    const wLabel = (ex.weightUnit || 'lbs') === 'miles' ? 'DISTANCE' : 'WEIGHT';
+    const rLabel = (ex.repUnit || 'reps') === 'time' ? 'TIME' : 'REPS';
+
     if (!set.weight || !set.reps) {
         const lastSets = getLastRawSets(exerciseName);
         if (lastSets && lastSets[setIndex]) {
@@ -1271,7 +1301,7 @@ function completeSet(exIndex, setIndex) {
         }
     }
     if (!set.weight || !set.reps) {
-        alert('PLEASE ENTER WEIGHT AND REPS FIRST.');
+        showToast(`ENTER ${wLabel} AND ${rLabel} FIRST`);
         return;
     }
     set.completed = true;
@@ -1314,6 +1344,14 @@ function getLastRawSets(exerciseName) {
     for (const workout of workoutHistory) {
         const ex = workout.exercises.find(e => e.name === exerciseName);
         if (ex) return ex.sets;
+    }
+    return null;
+}
+
+function getLastExerciseEntry(exerciseName) {
+    for (const workout of workoutHistory) {
+        const ex = workout.exercises.find(e => e.name === exerciseName);
+        if (ex) return ex;
     }
     return null;
 }
@@ -1740,7 +1778,7 @@ function renderHistory() {
         el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><p>NO WORKOUTS YET</p></div>';
         return;
     }
-    el.innerHTML = workoutHistory.slice(0, 10).map(w => {
+    el.innerHTML = workoutHistory.map((w, i) => {
         const sets = w.exercises.reduce((sum, ex) => sum + ex.sets.filter(s => s.completed).length, 0);
         const vol = w.exercises.reduce((sum, ex) =>
             sum + ex.sets.filter(s => s.completed).reduce((s2, s) =>
@@ -1748,20 +1786,137 @@ function renderHistory() {
         const date = new Date(w.date);
         const workoutTitle = w.dayName ? `${w.planName} - ${w.dayName}` : w.planName;
         return `
-            <div class="history-row">
-                <div class="history-date">${date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
-                <div class="history-name">${escapeHtml(workoutTitle)}</div>
-                <div class="history-stats">${sets} SETS · ${Math.round(vol).toLocaleString()} LBS VOLUME</div>
+            <div class="history-row history-row-clickable" data-index="${i}">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div class="history-date">${date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+                        <div class="history-name">${escapeHtml(workoutTitle)}</div>
+                        <div class="history-stats">${sets} SETS · ${Math.round(vol).toLocaleString()} LBS VOLUME</div>
+                    </div>
+                    <div style="color: var(--text-secondary); font-size: 22px; padding-left: 12px;">›</div>
+                </div>
             </div>
         `;
     }).join('');
+    el.querySelectorAll('.history-row-clickable').forEach(row => {
+        row.addEventListener('click', () => showWorkoutDetail(parseInt(row.dataset.index)));
+    });
+}
+
+function showWorkoutDetail(index) {
+    const w = workoutHistory[index];
+    if (!w) return;
+    const date = new Date(w.date);
+    const workoutTitle = w.dayName ? `${w.planName} - ${w.dayName}` : w.planName;
+    let duration = '';
+    if (w.startTime && w.endTime) {
+        const mins = Math.round((new Date(w.endTime) - new Date(w.startTime)) / 60000);
+        duration = `${mins} MIN`;
+    }
+    document.getElementById('wdm-name').textContent = workoutTitle;
+    const body = document.getElementById('wdm-body');
+    body.innerHTML = `
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+            <div style="background: var(--bg-hover); padding: 8px 16px; border-left: 3px solid var(--primary);">
+                <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; font-family: 'Barlow Condensed', sans-serif;">DATE</div>
+                <div style="font-weight: 700; font-family: 'Barlow Condensed', sans-serif;">${date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</div>
+            </div>
+            ${duration ? `<div style="background: var(--bg-hover); padding: 8px 16px; border-left: 3px solid var(--border);">
+                <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; font-family: 'Barlow Condensed', sans-serif;">DURATION</div>
+                <div style="font-weight: 700; font-family: 'Barlow Condensed', sans-serif;">${duration}</div>
+            </div>` : ''}
+        </div>
+        <div style="max-height: 420px; overflow-y: auto;">
+            ${w.exercises.map(ex => {
+                const wUnit = ex.weightUnit === 'miles' ? 'MI' : 'LBS';
+                const rUnit = ex.repUnit === 'time' ? 'S' : 'REPS';
+                return `
+                    <div style="margin-bottom: 18px;">
+                        <div style="font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 700; text-transform: uppercase; margin-bottom: 6px; color: var(--primary);">${escapeHtml(ex.name)}</div>
+                        ${ex.sets.map((s, si) => `
+                            <div style="display: flex; align-items: center; gap: 12px; padding: 5px 0; border-bottom: 1px solid var(--border);">
+                                <span style="font-size: 12px; color: var(--text-secondary); font-family: 'Barlow Condensed', sans-serif; min-width: 48px;">SET ${si + 1}</span>
+                                ${s.completed
+                                    ? `<span style="font-weight: 600;">${escapeHtml(String(s.weight))} ${wUnit} × ${escapeHtml(String(s.reps))} ${rUnit}</span>`
+                                    : `<span style="color: var(--text-secondary); font-size: 13px;">SKIPPED</span>`}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+    document.getElementById('wdm-edit-btn').onclick = () => editWorkoutEntry(index);
+    document.getElementById('workout-detail-modal').classList.add('active');
+}
+
+function editWorkoutEntry(index) {
+    const w = workoutHistory[index];
+    if (!w) return;
+    const workoutTitle = w.dayName ? `${w.planName} - ${w.dayName}` : w.planName;
+    document.getElementById('wdm-name').textContent = `EDIT: ${workoutTitle}`;
+    const body = document.getElementById('wdm-body');
+    body.innerHTML = `
+        <div style="max-height: 450px; overflow-y: auto;" id="wdm-edit-form">
+            ${w.exercises.map((ex, exIdx) => {
+                const wPlaceholder = ex.weightUnit === 'miles' ? 'MI' : 'LBS';
+                const rPlaceholder = ex.repUnit === 'time' ? 'SECS' : 'REPS';
+                return `
+                    <div style="margin-bottom: 18px;">
+                        <div style="font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px; color: var(--primary);">${escapeHtml(ex.name)}</div>
+                        ${ex.sets.map((s, si) => `
+                            <div style="display: grid; grid-template-columns: 48px 1fr 1fr; gap: 8px; align-items: center; margin-bottom: 6px;">
+                                <span style="font-size: 12px; color: var(--text-secondary); font-family: 'Barlow Condensed', sans-serif;">SET ${si + 1}</span>
+                                <input type="number" class="set-input" style="width: 100%; box-sizing: border-box;"
+                                    placeholder="${wPlaceholder}" value="${escapeHtml(String(s.weight || ''))}"
+                                    data-ex="${exIdx}" data-set="${si}" data-field="weight"
+                                    ${!s.completed ? 'disabled' : ''}>
+                                <input type="number" class="set-input" style="width: 100%; box-sizing: border-box;"
+                                    placeholder="${rPlaceholder}" value="${escapeHtml(String(s.reps || ''))}"
+                                    data-ex="${exIdx}" data-set="${si}" data-field="reps"
+                                    ${!s.completed ? 'disabled' : ''}>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }).join('')}
+        </div>
+        <div style="margin-top: 16px;">
+            <button class="btn btn-small" id="wdm-save-btn">SAVE CHANGES</button>
+        </div>
+    `;
+    document.getElementById('wdm-save-btn').addEventListener('click', () => saveWorkoutEdit(index));
+    document.getElementById('wdm-edit-btn').style.display = 'none';
+}
+
+function saveWorkoutEdit(index) {
+    const form = document.getElementById('wdm-edit-form');
+    if (!form) return;
+    const w = workoutHistory[index];
+    form.querySelectorAll('[data-field]').forEach(input => {
+        const exIdx = parseInt(input.dataset.ex);
+        const setIdx = parseInt(input.dataset.set);
+        const field = input.dataset.field;
+        w.exercises[exIdx].sets[setIdx][field] = input.value;
+    });
+    saveToFirebase();
+    showToast('WORKOUT UPDATED');
+    document.getElementById('workout-detail-modal').classList.remove('active');
+    document.getElementById('wdm-edit-btn').style.display = '';
 }
 
 function renderVolumeChart() {
     const canvas = document.getElementById('volume-chart');
+    const scrollWrapper = document.getElementById('volume-chart-scroll');
     const ctx = canvas.getContext('2d');
-    const data = workoutHistory.slice(0, 10).reverse();
-    canvas.width = canvas.offsetWidth || 600;
+    const data = [...workoutHistory].reverse(); // all workouts, oldest first
+    const containerWidth = (scrollWrapper ? scrollWrapper.clientWidth : canvas.offsetWidth) || 600;
+    const minPointSpacing = 60;
+    const padding = { top: 20, right: 20, bottom: 40, left: 50 };
+    const computedWidth = data.length > 1
+        ? Math.max(containerWidth, (data.length - 1) * minPointSpacing + padding.left + padding.right)
+        : containerWidth;
+    canvas.width = computedWidth;
     canvas.height = 200;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (data.length === 0) {
@@ -1776,7 +1931,6 @@ function renderVolumeChart() {
             sum + ex.sets.filter(s => s.completed).reduce((s2, s) =>
                 s2 + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0), 0));
     const maxVol = Math.max(...volumes, 1);
-    const padding = { top: 20, right: 20, bottom: 40, left: 50 };
     const chartWidth = canvas.width - padding.left - padding.right;
     const chartHeight = canvas.height - padding.top - padding.bottom;
     const stepX = data.length > 1 ? chartWidth / (data.length - 1) : chartWidth;
