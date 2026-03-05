@@ -113,6 +113,7 @@
                         <button class="nav-tab" data-view="community">COMMUNITY</button>
                         <button class="nav-tab" data-view="progress">PROGRESS</button>
                         <button class="nav-tab" data-view="profile">PROFILE</button>
+                        <button class="nav-tab" data-view="admin" id="admin-nav-tab" style="display:none;">⚙️ ADMIN</button>
                     </nav>
                 </div>
             </div>
@@ -277,6 +278,42 @@
                             <p>LOADING FORUM...</p>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- ADMIN VIEW -->
+            <div id="admin-view" class="view">
+                <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px;">⚙️ ADMIN PANEL</h2>
+                <p style="color: var(--text-secondary); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px;">RESTRICTED ACCESS</p>
+
+                <div class="community-sub-tabs" style="margin-bottom: 20px;">
+                    <button class="admin-tab community-tab active" data-pane="users">👥 USERS</button>
+                    <button class="admin-tab community-tab" data-pane="forum">💬 FORUM</button>
+                    <button class="admin-tab community-tab" data-pane="plans">🏋️ PLANS</button>
+                </div>
+
+                <!-- Users pane -->
+                <div id="admin-users-pane">
+                    <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+                        <button class="btn btn-small" onclick="loadAdminUsers()">↺ REFRESH</button>
+                    </div>
+                    <div id="admin-users-list"><p style="color:var(--text-secondary);">Loading...</p></div>
+                </div>
+
+                <!-- Forum pane -->
+                <div id="admin-forum-pane" style="display:none;">
+                    <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+                        <button class="btn btn-small" onclick="loadAdminForum()">↺ REFRESH</button>
+                    </div>
+                    <div id="admin-forum-list"><p style="color:var(--text-secondary);">Loading...</p></div>
+                </div>
+
+                <!-- Plans pane -->
+                <div id="admin-plans-pane" style="display:none;">
+                    <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+                        <button class="btn btn-small" onclick="loadAdminPlans()">↺ REFRESH</button>
+                    </div>
+                    <div id="admin-plans-list"><p style="color:var(--text-secondary);">Loading...</p></div>
                 </div>
             </div>
 
@@ -580,8 +617,8 @@
 
                 <!-- Like button row -->
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border);">
-                    <button id="pd-like-btn" class="like-btn">❤️ LIKE</button>
-                    <span id="pd-likes-count" style="font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; color: var(--text-secondary);">0 LIKES</span>
+                    <button id="pd-like-btn" class="like-btn">💪 LIKE</button>
+                    <span id="pd-likes-count" style="font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; color: var(--text-secondary);">0 PUMPS</span>
                     <button id="pd-delete-post-btn" class="btn btn-secondary btn-small" style="margin-left: auto; display: none;">🗑️ DELETE</button>
                 </div>
 
