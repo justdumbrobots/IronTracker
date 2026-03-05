@@ -1152,6 +1152,39 @@ select.form-input:focus {
     border-bottom: none;
 }
 
+.history-row-clickable {
+    cursor: pointer;
+    transition: background 0.15s;
+    padding-left: 8px;
+    padding-right: 8px;
+    margin-left: -8px;
+    margin-right: -8px;
+}
+
+.history-row-clickable:hover {
+    background: var(--bg-hover);
+}
+
+.unit-select {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 6px;
+    border-radius: 0;
+    cursor: pointer;
+}
+
+.unit-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    color: var(--text-primary);
+}
+
 .history-date {
     color: var(--text-secondary);
     font-size: 12px;

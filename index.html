@@ -354,7 +354,9 @@
                 <!-- Volume Chart -->
                 <div class="chart-container">
                     <div class="chart-header"><div class="chart-title">VOLUME PER WORKOUT</div></div>
-                    <canvas id="volume-chart" height="200"></canvas>
+                    <div id="volume-chart-scroll" style="overflow-x: auto;">
+                        <canvas id="volume-chart" height="200"></canvas>
+                    </div>
                 </div>
 
                 <!-- Personal Records -->
@@ -715,6 +717,18 @@
         </div>
 
         <!-- Plan Detail Modal -->
+        <!-- Workout Detail / Edit Modal -->
+        <div id="workout-detail-modal" class="modal">
+            <div class="modal-content" style="max-width: 700px;">
+                <div class="modal-header" id="wdm-name">WORKOUT DETAILS</div>
+                <div id="wdm-body"></div>
+                <div style="display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap;">
+                    <button class="btn btn-small" id="wdm-edit-btn">✏ EDIT</button>
+                    <button class="btn btn-secondary btn-small" onclick="document.getElementById('workout-detail-modal').classList.remove('active')">CLOSE</button>
+                </div>
+            </div>
+        </div>
+
         <div id="plan-detail-modal" class="modal">
             <div class="modal-content" style="max-width: 700px;">
                 <div class="modal-header" id="plan-detail-name">PLAN NAME</div>
