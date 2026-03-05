@@ -1262,7 +1262,7 @@ function renderActiveWorkout() {
         `;
     }).join('');
     container.querySelectorAll('.set-input').forEach(input => {
-        input.addEventListener('change', (e) => {
+        input.addEventListener('input', (e) => {
             const ex = parseInt(e.target.dataset.ex);
             const set = parseInt(e.target.dataset.set);
             const field = e.target.dataset.field;
