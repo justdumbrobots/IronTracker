@@ -1267,7 +1267,10 @@ function renderActiveWorkout() {
                                     ${set.completed ? 'disabled' : ''}>
                             </div>
                             ${set.completed ?
-                                `<div style="color: var(--success); margin-top: 8px; font-weight: 600; font-size: 13px; font-family: 'Barlow Condensed', sans-serif;">✓ DONE - ${set.weight} ${wUnit === 'miles' ? 'MI' : 'LBS'} × ${set.reps} ${rUnit === 'time' ? 'S' : 'REPS'}</div>` :
+                                `<div style="display:flex; align-items:center; gap:8px; margin-top: 8px; flex-wrap:wrap;">
+                                    <span style="color: var(--success); font-weight: 600; font-size: 13px; font-family: 'Barlow Condensed', sans-serif;">✓ DONE - ${set.weight} ${wUnit === 'miles' ? 'MI' : 'LBS'} × ${set.reps} ${rUnit === 'time' ? 'S' : 'REPS'}</span>
+                                    <button class="edit-set-btn" data-ex="${exIndex}" data-set="${setIndex}" style="font-size:11px; padding:2px 8px;">EDIT</button>
+                                </div>` :
                                 `<button class="complete-set-btn" data-ex="${exIndex}" data-set="${setIndex}">✓ COMPLETE</button>`
                             }
                         </div>
@@ -1297,6 +1300,14 @@ function renderActiveWorkout() {
             const ex = parseInt(btn.dataset.ex);
             const set = parseInt(btn.dataset.set);
             completeSet(ex, set);
+        });
+    });
+    container.querySelectorAll('.edit-set-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const ex = parseInt(btn.dataset.ex);
+            const set = parseInt(btn.dataset.set);
+            currentWorkout.exercises[ex].sets[set].completed = false;
+            renderActiveWorkout();
         });
     });
 }
