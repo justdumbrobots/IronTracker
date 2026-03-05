@@ -1958,3 +1958,19 @@ select.form-input:focus {
         gap: 6px;
     }
 }
+
+/* ── Admin Panel ── */
+.admin-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 8px;
+    background: var(--bg-secondary);
+}
+
+.admin-row:hover {
+    border-color: var(--primary);
+}

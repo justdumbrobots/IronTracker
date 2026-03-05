@@ -85,6 +85,11 @@ let unsubscribeForumPosts = null;
 let unsubscribePostReplies = null;
 let activeCommunityPane = 'plans';   // Remembered across main-nav tab switches
 
+// Admin
+const ADMIN_EMAIL = 'justdumbrobots@gmail.com';
+let adminActivePane = 'users';
+function isAdmin() { return currentUser?.email === ADMIN_EMAIL; }
+
 // ═════════════════════════════════════════════
 // THEME MANAGEMENT
 // ═════════════════════════════════════════════
@@ -139,9 +144,18 @@ function showMainApp() {
     document.getElementById('loading-screen').style.display = 'none';
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('main-app').style.display = 'block';
+    document.getElementById('admin-nav-tab').style.display = isAdmin() ? '' : 'none';
     updateProfileUI();
     updateWorkoutHero();
     initFCM();
+    // Write lightweight profile so admin can list users
+    if (currentUser) {
+        setDoc(doc(db, 'users', currentUser.uid), {
+            email: currentUser.email || '',
+            displayName: currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete',
+            lastSeen: new Date().toISOString()
+        }, { merge: true }).catch(() => {});
+    }
 }
 
 async function handleLogin(email, password) {
@@ -1044,6 +1058,7 @@ function switchView(viewName) {
     if (viewName === 'community') switchCommunityPane(activeCommunityPane);
     if (viewName === 'progress') renderProgress();
     if (viewName === 'workout') updateWorkoutHero();
+    if (viewName === 'admin' && isAdmin()) loadAdminView();
 }
 
 function updateWorkoutHero() {
@@ -2720,7 +2735,7 @@ function renderForumPosts() {
             </div>
             <p class="forum-post-preview">${escapeHtml(preview)}</p>
             <div class="forum-post-footer">
-                <span class="forum-stat ${liked ? 'liked' : ''}">❤️ ${post.likesCount || 0}</span>
+                <span class="forum-stat ${liked ? 'liked' : ''}">💪 ${post.likesCount || 0}</span>
                 <span class="forum-stat">💬 ${post.replyCount || 0} REPLIES</span>
                 ${isOwn ? `<span class="forum-delete-link" onclick="event.stopPropagation(); deleteForumPost('${post.firestoreId}')">DELETE</span>` : ''}
             </div>
@@ -2748,12 +2763,12 @@ function showPostDetail(postId) {
     document.getElementById('pd-author').textContent = `@${post.displayName || 'user'}`;
     document.getElementById('pd-time').textContent = post.createdAt ? formatTimeAgo(post.createdAt.toDate()) : '';
     document.getElementById('pd-text').textContent = post.text || '';
-    document.getElementById('pd-likes-count').textContent = `${post.likesCount || 0} LIKES`;
+    document.getElementById('pd-likes-count').textContent = `${post.likesCount || 0} PUMPS`;
     document.getElementById('pd-reply-count').textContent = post.replyCount || 0;
 
     const likeBtn = document.getElementById('pd-like-btn');
     const liked = myForumLikes.has(postId);
-    likeBtn.textContent = liked ? '❤️ LIKED' : '❤️ LIKE';
+    likeBtn.textContent = liked ? '💪 LIKED' : '💪 LIKE';
     likeBtn.classList.toggle('liked', liked);
 
     const deleteBtn = document.getElementById('pd-delete-post-btn');
@@ -2850,7 +2865,7 @@ async function togglePostLike(postId) {
         // Update detail modal button immediately
         const liked  = myForumLikes.has(postId);
         const likeBtn = document.getElementById('pd-like-btn');
-        if (likeBtn) { likeBtn.textContent = liked ? '❤️ LIKED' : '❤️ LIKE'; likeBtn.classList.toggle('liked', liked); }
+        if (likeBtn) { likeBtn.textContent = liked ? '💪 LIKED' : '💪 LIKE'; likeBtn.classList.toggle('liked', liked); }
     } catch (e) {
         console.error('Like error:', e);
         showToast('ERROR — TRY AGAIN', 'error');
@@ -2865,6 +2880,131 @@ async function deleteForumPost(postId) {
     } catch (e) {
         console.error('Delete post error:', e);
         showToast('ERROR DELETING POST', 'error');
+    }
+}
+
+// ═════════════════════════════════════════════
+// ADMIN PANEL
+// ═════════════════════════════════════════════
+function loadAdminView() {
+    if (!isAdmin()) return;
+    switchAdminPane(adminActivePane);
+}
+
+function switchAdminPane(pane) {
+    if (!isAdmin()) return;
+    adminActivePane = pane;
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.toggle('active', t.dataset.pane === pane));
+    document.getElementById('admin-users-pane').style.display = pane === 'users' ? '' : 'none';
+    document.getElementById('admin-forum-pane').style.display = pane === 'forum' ? '' : 'none';
+    document.getElementById('admin-plans-pane').style.display = pane === 'plans' ? '' : 'none';
+    if (pane === 'users') loadAdminUsers();
+    if (pane === 'forum') loadAdminForum();
+    if (pane === 'plans') loadAdminPlans();
+}
+
+async function loadAdminUsers() {
+    if (!isAdmin()) return;
+    const el = document.getElementById('admin-users-list');
+    el.innerHTML = '<p style="color:var(--text-secondary);">Loading...</p>';
+    try {
+        const snap = await getDocs(collection(db, 'users'));
+        if (snap.empty) { el.innerHTML = '<p style="color:var(--text-secondary);">NO USERS FOUND.</p>'; return; }
+        el.innerHTML = snap.docs.map(d => {
+            const u = d.data();
+            const lastSeen = u.lastSeen ? new Date(u.lastSeen).toLocaleString() : 'NEVER';
+            const displayName = escapeHtml(u.displayName || '—');
+            const email = escapeHtml(u.email || d.id);
+            return `<div class="admin-row">
+                <div style="flex:1;">
+                    <div style="font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:16px;">${displayName}</div>
+                    <div style="font-size:13px;color:var(--text-secondary);">${email}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">LAST SEEN: ${lastSeen}</div>
+                </div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        console.error('Admin users error:', e);
+        el.innerHTML = `<p style="color:var(--error);">ERROR: ${escapeHtml(e.message)}</p>`;
+    }
+}
+
+async function loadAdminForum() {
+    if (!isAdmin()) return;
+    const el = document.getElementById('admin-forum-list');
+    el.innerHTML = '<p style="color:var(--text-secondary);">Loading...</p>';
+    try {
+        const snap = await getDocs(query(collection(db, 'forum_posts'), orderBy('createdAt', 'desc')));
+        if (snap.empty) { el.innerHTML = '<p style="color:var(--text-secondary);">NO POSTS FOUND.</p>'; return; }
+        el.innerHTML = snap.docs.map(d => {
+            const p = d.data();
+            const preview = escapeHtml((p.text || '').slice(0, 140) + (p.text?.length > 140 ? '...' : ''));
+            const when = p.createdAt ? formatTimeAgo(p.createdAt.toDate()) : '';
+            return `<div class="admin-row">
+                <div style="flex:1;">
+                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:3px;">@${escapeHtml(p.displayName || 'user')} · ${when} · ${escapeHtml(p.category || 'general')}</div>
+                    <div style="font-size:14px;">${preview}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">💪 ${p.likesCount || 0} · 💬 ${p.replyCount || 0} REPLIES</div>
+                </div>
+                <button class="btn btn-secondary btn-small" style="flex-shrink:0;" onclick="adminDeleteForumPost('${d.id}')">DELETE</button>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        console.error('Admin forum error:', e);
+        el.innerHTML = `<p style="color:var(--error);">ERROR: ${escapeHtml(e.message)}</p>`;
+    }
+}
+
+async function loadAdminPlans() {
+    if (!isAdmin()) return;
+    const el = document.getElementById('admin-plans-list');
+    el.innerHTML = '<p style="color:var(--text-secondary);">Loading...</p>';
+    try {
+        const snap = await getDocs(query(collection(db, 'community_plans'), orderBy('createdAt', 'desc')));
+        if (snap.empty) { el.innerHTML = '<p style="color:var(--text-secondary);">NO SHARED PLANS FOUND.</p>'; return; }
+        el.innerHTML = snap.docs.map(d => {
+            const p = d.data();
+            const enrolled = p.enrolledCount || 0;
+            const reactions = p.reactionCount || 0;
+            const visibility = p.visibility || 'public';
+            return `<div class="admin-row">
+                <div style="flex:1;">
+                    <div style="font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:16px;">${escapeHtml(p.name || 'UNNAMED')}</div>
+                    <div style="font-size:12px;color:var(--text-secondary);">BY ${escapeHtml(p.authorDisplayName || 'unknown')} · ${escapeHtml(p.difficulty || '')} · ${p.daysPerWeek || 0} DAYS/WK · ${visibility.toUpperCase()}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">ENROLLED: ${enrolled} · REACTIONS: ${reactions}</div>
+                </div>
+                <button class="btn btn-secondary btn-small" style="flex-shrink:0;" onclick="adminDeleteCommunityPlan('${d.id}')">DELETE</button>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        console.error('Admin plans error:', e);
+        el.innerHTML = `<p style="color:var(--error);">ERROR: ${escapeHtml(e.message)}</p>`;
+    }
+}
+
+async function adminDeleteForumPost(postId) {
+    if (!isAdmin()) return;
+    if (!confirm('DELETE THIS POST? THIS CANNOT BE UNDONE.')) return;
+    try {
+        await deleteDoc(doc(db, 'forum_posts', postId));
+        showToast('POST DELETED', 'info');
+        loadAdminForum();
+    } catch (e) {
+        console.error('Admin delete post error:', e);
+        showToast('ERROR DELETING POST', 'error');
+    }
+}
+
+async function adminDeleteCommunityPlan(planId) {
+    if (!isAdmin()) return;
+    if (!confirm('DELETE THIS COMMUNITY PLAN? THIS CANNOT BE UNDONE.')) return;
+    try {
+        await deleteDoc(doc(db, 'community_plans', planId));
+        showToast('PLAN DELETED', 'info');
+        loadAdminPlans();
+    } catch (e) {
+        console.error('Admin delete plan error:', e);
+        showToast('ERROR DELETING PLAN', 'error');
     }
 }
 
@@ -3090,5 +3230,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('pd-close-btn').addEventListener('click', () => {
         document.getElementById('post-detail-modal').classList.remove('active');
         if (unsubscribePostReplies) { unsubscribePostReplies(); unsubscribePostReplies = null; }
+    });
+
+    // Admin sub-tabs
+    document.querySelectorAll('.admin-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchAdminPane(btn.dataset.pane));
     });
 });
