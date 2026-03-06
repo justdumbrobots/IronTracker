@@ -8,8 +8,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Iron Track">
-    <title>Iron Track - Tactical Workout Logger</title>
+    <meta name="apple-mobile-web-app-title" content="IronSyncIQ">
+    <title>IronSyncIQ - Workout Tracker</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
@@ -21,7 +21,7 @@
     <!-- Loading Screen -->
     <div id="loading-screen" class="loading-screen">
         <div class="loading-content">
-            <div class="logo" style="font-size: 48px; margin-bottom: 20px;">IRON TRACK</div>
+            <div class="logo" style="font-size: 48px; margin-bottom: 20px;">IRON<span style="color:var(--primary)">SYNC</span>IQ</div>
             <div class="loading-spinner"></div>
             <p style="color: var(--text-secondary); margin-top: 20px;">LOADING...</p>
         </div>
@@ -30,7 +30,7 @@
     <!-- Role Selection Screen (shown once, after first signup) -->
     <div id="role-selection-screen" style="display:none; position:fixed; inset:0; background:var(--bg-primary); z-index:1000; align-items:center; justify-content:center; flex-direction:column; padding:24px;">
         <div style="max-width:480px; width:100%; text-align:center;">
-            <div class="logo" style="font-size:40px; margin-bottom:8px;">IRON TRACK</div>
+            <div class="logo" style="font-size:40px; margin-bottom:8px;">IRON<span style="color:var(--primary)">SYNC</span>IQ</div>
             <p style="color:var(--text-secondary); letter-spacing:1px; font-size:13px; text-transform:uppercase; margin-bottom:40px;">WELCOME — HOW WILL YOU USE THE APP?</p>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:32px;">
                 <button class="role-choice-btn" onclick="window.handleRoleSelect('athlete')">
@@ -51,7 +51,7 @@
     <!-- Auth Screen -->
     <div id="auth-screen" class="auth-screen" style="display: none;">
         <div class="auth-container">
-            <div class="logo" style="font-size: 48px; margin-bottom: 10px; text-align: center;">IRON TRACK</div>
+            <div class="logo" style="font-size: 48px; margin-bottom: 10px; text-align: center;">IRON<span style="color:var(--primary)">SYNC</span>IQ</div>
             <p style="color: var(--text-secondary); text-align: center; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">TRACK YOUR LIFTS</p>
             
             <div id="login-form" class="auth-form">
@@ -115,7 +115,7 @@
             <div class="install-content">
                 <div class="install-icon">📱</div>
                 <div class="install-text">
-                    <div class="install-title">INSTALL IRON TRACK</div>
+                    <div class="install-title">INSTALL IRONSYNCIQ</div>
                     <div class="install-subtitle">GET THE FULL APP EXPERIENCE</div>
                 </div>
                 <button class="btn btn-small" id="install-btn">INSTALL</button>
@@ -126,7 +126,7 @@
         <header>
             <div class="container">
                 <div class="header-content">
-                    <div class="logo">IRON TRACK</div>
+                    <div class="logo">IRON<span style="color:var(--primary)">SYNC</span>IQ</div>
                     <nav class="nav-tabs">
                         <button class="nav-tab active" data-view="workout">WORKOUT</button>
                         <button class="nav-tab" data-view="plans">MY PLANS</button>

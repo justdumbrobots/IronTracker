@@ -17,7 +17,7 @@ const swMessaging = firebase.messaging();
 
 // Show a notification when the app is in the background
 swMessaging.onBackgroundMessage((payload) => {
-    const title = payload.notification?.title || 'IRON TRACK';
+    const title = payload.notification?.title || 'IRONSYNCIQ';
     const body  = payload.notification?.body  || '';
     self.registration.showNotification(title, {
         body,
@@ -28,7 +28,7 @@ swMessaging.onBackgroundMessage((payload) => {
 });
 
 // ─── PWA caching ──────────────────────────────────────────────────────────────
-const CACHE = 'iron-track-v13';
+const CACHE = 'ironsynciq-v14';
 const ASSETS = [
     '/', '/index.html', '/styles.css', '/app.js', '/manifest.json',
     '/favicon-16x16.png', '/favicon-32x32.png', '/apple-touch-icon.png',

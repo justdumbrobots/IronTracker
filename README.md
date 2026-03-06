@@ -1,4 +1,4 @@
-# 🏋️ Iron Track - Workout Tracker PWA
+# IronSyncIQ - Workout Tracker PWA
 
 A Progressive Web App for tracking workouts with cloud sync, multi-user support, and offline capabilities. Log sets, reps, and weight for any exercise, track your progress over time, and access your data from any device.
 

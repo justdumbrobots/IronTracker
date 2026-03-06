@@ -890,7 +890,7 @@ function exportWorkoutDataToCSV() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `iron-track-workouts-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `ironsynciq-workouts-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -3267,7 +3267,7 @@ function exportAdminActivityCSV() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `irontracker-activity-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `ironsynciq-activity-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
 }

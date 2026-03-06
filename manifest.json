@@ -1,7 +1,7 @@
 {
-  "name": "Iron Track - Workout Logger",
-  "short_name": "Iron Track",
-  "description": "Track workouts, log sets and reps, monitor progress",
+  "name": "IronSyncIQ - Workout Tracker",
+  "short_name": "IronSyncIQ",
+  "description": "Track workouts, sync progress, and train smarter",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
