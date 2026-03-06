@@ -2,7 +2,7 @@
 
 A Progressive Web App for tracking workouts with cloud sync, multi-user support, and offline capabilities. Log sets, reps, and weight for any exercise, track your progress over time, and access your data from any device.
 
-https://justdumbrobots.github.io/IronTracker/
+https://ironsynciq.com
 
 ## ✨ Features
 
@@ -34,7 +34,7 @@ https://justdumbrobots.github.io/IronTracker/
 
 ## 🚀 Live Demo
 
-https://justdumbrobots.github.io/IronTracker/
+https://ironsynciq.com
 
 ## 🛠️ Tech Stack
 
@@ -170,7 +170,7 @@ Contributions welcome! Please feel free to submit a Pull Request.
 Justin - justdumbrobots@gmail.com
 
 
-Project Link: https://justdumbrobots.github.io/IronTracker/
+Project Link: https://ironsynciq.com
 
 ---
 

@@ -503,7 +503,7 @@ async function renderTrainerProfilePane() {
             <div style="margin-bottom:20px;">
                 <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; letter-spacing:1px; margin-bottom:8px; color:var(--text-secondary);">REFERRAL LINK</div>
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                    <code style="flex:1; background:var(--bg-hover); padding:8px 12px; border-radius:6px; font-size:12px; overflow:auto; word-break:break-all;" id="referral-link-display">https://justdumbrobots.github.io/IronTracker/?ref=${getUser().uid}</code>
+                    <code style="flex:1; background:var(--bg-hover); padding:8px 12px; border-radius:6px; font-size:12px; overflow:auto; word-break:break-all;" id="referral-link-display">https://ironsynciq.com/?ref=${getUser().uid}</code>
                     <button class="btn btn-small btn-secondary" onclick="copyReferralLink()">COPY</button>
                 </div>
             </div>
@@ -531,7 +531,7 @@ async function saveTrainerProfile() {
 function copyReferralLink() {
     const uid = getUser()?.uid;
     if (!uid) return;
-    const link = `https://justdumbrobots.github.io/IronTracker/?ref=${uid}`;
+    const link = `https://ironsynciq.com/?ref=${uid}`;
     navigator.clipboard.writeText(link).then(() => toast('REFERRAL LINK COPIED! 📋', 'success'))
         .catch(() => toast('COPY FAILED — LINK: ' + link, 'error'));
 }
