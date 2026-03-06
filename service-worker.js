@@ -28,7 +28,7 @@ swMessaging.onBackgroundMessage((payload) => {
 });
 
 // ─── PWA caching ──────────────────────────────────────────────────────────────
-const CACHE = 'iron-track-v5';
+const CACHE = 'iron-track-v6';
 const ASSETS = [
     '/', '/index.html', '/styles.css', '/app.js', '/manifest.json',
     '/favicon-16x16.png', '/favicon-32x32.png', '/apple-touch-icon.png',
