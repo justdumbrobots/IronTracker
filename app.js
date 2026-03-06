@@ -2997,7 +2997,23 @@ async function loadAdminPlans() {
 
 async function adminDeleteForumPost(postId) {
     if (!isAdmin()) return;
-    if (!confirm('DELETE THIS POST? THIS CANNOT BE UNDONE.')) return;
+    const btn = document.querySelector(`button[onclick="adminDeleteForumPost('${postId}')"]`);
+    if (!btn) return;
+    if (btn.dataset.confirming !== 'true') {
+        btn.dataset.confirming = 'true';
+        btn.textContent = 'CONFIRM?';
+        btn.style.background = 'var(--error)';
+        btn.style.color = '#fff';
+        setTimeout(() => {
+            if (btn.dataset.confirming === 'true') {
+                btn.dataset.confirming = '';
+                btn.textContent = 'DELETE';
+                btn.style.background = '';
+                btn.style.color = '';
+            }
+        }, 3000);
+        return;
+    }
     try {
         await deleteDoc(doc(db, 'forum_posts', postId));
         showToast('POST DELETED', 'info');
@@ -3010,7 +3026,23 @@ async function adminDeleteForumPost(postId) {
 
 async function adminDeleteCommunityPlan(planId) {
     if (!isAdmin()) return;
-    if (!confirm('DELETE THIS COMMUNITY PLAN? THIS CANNOT BE UNDONE.')) return;
+    const btn = document.querySelector(`button[onclick="adminDeleteCommunityPlan('${planId}')"]`);
+    if (!btn) return;
+    if (btn.dataset.confirming !== 'true') {
+        btn.dataset.confirming = 'true';
+        btn.textContent = 'CONFIRM?';
+        btn.style.background = 'var(--error)';
+        btn.style.color = '#fff';
+        setTimeout(() => {
+            if (btn.dataset.confirming === 'true') {
+                btn.dataset.confirming = '';
+                btn.textContent = 'DELETE';
+                btn.style.background = '';
+                btn.style.color = '';
+            }
+        }, 3000);
+        return;
+    }
     try {
         await deleteDoc(doc(db, 'community_plans', planId));
         showToast('PLAN DELETED', 'info');
