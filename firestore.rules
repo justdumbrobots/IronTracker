@@ -2,8 +2,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'justdumbrobots@gmail.com';
+    }
+
     // ── User private data ─────────────────────────────────────────────
-    // Full access only to the owning user.
+    // Full access only to the owning user; admin can read profile docs.
+    match /users/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
     match /users/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
@@ -24,7 +32,7 @@ service cloud.firestore {
 
       allow update: if false; // Stats managed by Cloud Functions
       allow delete: if request.auth != null
-        && resource.data.authorUid == request.auth.uid;
+        && (resource.data.authorUid == request.auth.uid || isAdmin());
 
       // ── Per-user emoji reaction (one per user per plan) ──────────────
       match /reactions/{uid} {
@@ -101,7 +109,7 @@ service cloud.firestore {
         && request.resource.data.text.size() <= 2000;
       allow update: if false; // Cloud Functions update likesCount + replyCount
       allow delete: if request.auth != null
-        && resource.data.uid == request.auth.uid;
+        && (resource.data.uid == request.auth.uid || isAdmin());
 
       // ── Replies ────────────────────────────────────────────────────
       match /replies/{replyId} {
