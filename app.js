@@ -90,6 +90,12 @@ const ADMIN_EMAIL = 'justdumbrobots@gmail.com';
 let adminActivePane = 'users';
 let adminActivityData = [];
 
+// Role system
+let userRole = 'athlete';        // 'athlete' | 'trainer'
+let userTrainerId = null;        // athlete's linked trainer UID
+let userTrainerName = null;      // cached trainer display name
+let pendingRoleUid = null;       // UID awaiting role selection (new signup)
+
 // Effort rating scale
 const EFFORT_RATINGS = [
     { key: 'recovery',    label: 'RECOVERY PACE', color: '#4fc3f7', textColor: '#000', adj: +0.10, adjLabel: 'TRY +10%' },
@@ -133,12 +139,22 @@ function updateThemeToggle(theme) {
 // ═════════════════════════════════════════════
 // AUTHENTICATION
 // ═════════════════════════════════════════════
-onAuthStateChanged(auth, (user) => {
-    setTimeout(() => {
+onAuthStateChanged(auth, async (user) => {
+    setTimeout(async () => {
         if (user) {
             currentUser = user;
-            loadUserData();
-            showMainApp();
+            // Check if this user has ever initialised their workout data.
+            // If not, they're brand-new → show role selection before loading app.
+            const wdSnap = await getDoc(doc(db, 'users', user.uid, 'data', 'workout_data'));
+            if (!wdSnap.exists()) {
+                pendingRoleUid = user.uid;
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('auth-screen').style.display = 'none';
+                document.getElementById('role-selection-screen').style.display = 'flex';
+            } else {
+                loadUserData();
+                showMainApp();
+            }
         } else {
             currentUser = null;
             showAuthScreen();
@@ -168,6 +184,37 @@ function showMainApp() {
             lastSeen: new Date().toISOString()
         }, { merge: true }).catch(() => {});
     }
+    loadUserRole();
+}
+
+async function loadUserRole() {
+    if (!currentUser) return;
+    try {
+        const snap = await getDoc(doc(db, 'users', currentUser.uid));
+        const data = snap.data() || {};
+        userRole = data.role || 'athlete';
+        userTrainerId = data.trainerId || null;
+        userTrainerName = data.trainerDisplayName || null;
+        // Lazy-migrate existing users who predate the role system
+        if (!data.role) {
+            await updateDoc(doc(db, 'users', currentUser.uid), { role: 'athlete' });
+        }
+        // Expose to trainer.js / messaging.js
+        window.userRole = userRole;
+        window.userTrainerId = userTrainerId;
+        window.currentUserId = currentUser.uid;
+        window.currentUserName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete';
+        // Show/hide role-specific nav tabs
+        document.getElementById('trainer-nav-tab').style.display = userRole === 'trainer' ? '' : 'none';
+        document.getElementById('messages-nav-tab').style.display = '';
+        // Boot role-specific module
+        if (typeof window.initTrainer === 'function') window.initTrainer();
+        if (typeof window.initMessaging === 'function') window.initMessaging();
+        // Show coaching panel on profile for athletes
+        if (typeof window.loadCoachingPanel === 'function' && userRole === 'athlete') {
+            window.loadCoachingPanel();
+        }
+    } catch(e) { console.error('loadUserRole error:', e); }
 }
 
 async function handleLogin(email, password) {
@@ -185,37 +232,79 @@ async function handleLogin(email, password) {
 
 async function handleSignup(email, password, confirmPassword) {
     if (password !== confirmPassword) {
-        alert('PASSWORDS DO NOT MATCH');
-        return;
+        showToast('PASSWORDS DO NOT MATCH', 'error'); return;
     }
     if (password.length < 6) {
-        alert('PASSWORD MUST BE AT LEAST 6 CHARACTERS');
-        return;
+        showToast('PASSWORD MUST BE AT LEAST 6 CHARACTERS', 'error'); return;
     }
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await initializeUserData(userCredential.user.uid);
-        showToast('ACCOUNT CREATED! 🎉');
+        // Account creation fires onAuthStateChanged which shows role selection screen.
+        await createUserWithEmailAndPassword(auth, email, password);
     } catch (error) {
         let message = 'SIGNUP FAILED';
         if (error.code === 'auth/email-already-in-use') message = 'EMAIL ALREADY IN USE';
         if (error.code === 'auth/invalid-email') message = 'INVALID EMAIL';
         if (error.code === 'auth/weak-password') message = 'PASSWORD TOO WEAK';
-        alert(message);
+        showToast(message, 'error');
     }
+}
+
+async function handleRoleSelect(role) {
+    const uid = pendingRoleUid || currentUser?.uid;
+    if (!uid) return;
+    document.getElementById('role-selection-screen').style.display = 'none';
+    document.getElementById('loading-screen').style.display = 'flex';
+
+    try {
+        await initializeUserData(uid);
+        const trainerProfile = role === 'trainer' ? {
+            bio: '', specialties: [], location: '',
+            listedInDirectory: false, acceptingClients: true
+        } : null;
+        await setDoc(doc(db, 'users', uid), {
+            role,
+            ...(trainerProfile ? { trainerProfile } : {}),
+            trainerId: null, trainerDisplayName: null
+        }, { merge: true });
+
+        userRole = role;
+
+        // Process referral link for new athletes
+        if (role === 'athlete') {
+            const ref = sessionStorage.getItem('pendingTrainerRef');
+            if (ref) { await connectToTrainerByRef(ref); sessionStorage.removeItem('pendingTrainerRef'); }
+        }
+        pendingRoleUid = null;
+        loadUserData();
+        showMainApp();
+        showToast(`WELCOME, ${role.toUpperCase()}! 🎉`);
+    } catch(e) {
+        console.error('Role select error:', e);
+        showToast('SETUP FAILED — TRY AGAIN', 'error');
+    }
+}
+
+async function connectToTrainerByRef(trainerUid) {
+    try {
+        const trainerDoc = await getDoc(doc(db, 'users', trainerUid));
+        if (!trainerDoc.exists() || trainerDoc.data().role !== 'trainer') return;
+        const trainerName = trainerDoc.data().displayName || 'Trainer';
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+            trainerId: trainerUid, trainerDisplayName: trainerName
+        });
+        userTrainerId = trainerUid; userTrainerName = trainerName;
+        showToast(`CONNECTED TO TRAINER ${trainerName.toUpperCase()}!`, 'success');
+    } catch(e) { console.error('Referral link connect error:', e); }
 }
 
 async function handleGoogleAuth() {
     const provider = new GoogleAuthProvider();
     try {
-        const result = await signInWithPopup(auth, provider);
-        const userDoc = await getDoc(doc(db, 'users', result.user.uid, 'data', 'workout_data'));
-        if (!userDoc.exists()) {
-            await initializeUserData(result.user.uid);
-        }
-        showToast('WELCOME! 💪');
+        await signInWithPopup(auth, provider);
+        // onAuthStateChanged handles new-vs-returning user flow
     } catch (error) {
-        alert('GOOGLE SIGN-IN FAILED: ' + error.message);
+        showToast('GOOGLE SIGN-IN FAILED', 'error');
+        console.error(error);
     }
 }
 
@@ -1071,6 +1160,8 @@ function switchView(viewName) {
     if (viewName === 'progress') renderProgress();
     if (viewName === 'workout') updateWorkoutHero();
     if (viewName === 'admin' && isAdmin()) loadAdminView();
+    if (viewName === 'trainer' && typeof window.loadTrainerView === 'function') window.loadTrainerView();
+    if (viewName === 'messages' && typeof window.loadMessagesView === 'function') window.loadMessagesView();
 }
 
 function updateWorkoutHero() {
@@ -1200,11 +1291,14 @@ function startWorkout() {
     }
     
     currentWorkout = {
+        workoutId: crypto.randomUUID(),
         planId: plan.id,
         planName: plan.name,
         dayName: nextWorkout.day.dayName,
         dayIndex: nextWorkout.dayIndex,
         communityPlanId: plan.communityPlanId || null,
+        assignedByTrainer: plan.assignedByTrainer || false,
+        assigningTrainerId: plan.assigningTrainerId || null,
         startTime: new Date(),
         date: new Date().toISOString(),
         exercises: nextWorkout.day.exercises.map(ex => {
@@ -1244,6 +1338,7 @@ function startElapsedTimer() {
 
 function renderActiveWorkout() {
     const container = document.getElementById('exercise-container');
+    const isLockedPlan = currentWorkout.assignedByTrainer === true;
     container.innerHTML = currentWorkout.exercises.map((ex, exIndex) => {
         const lastPerf = getLastPerformance(ex.name);
         const lastEffort = getLastEffortRating(ex.name);
@@ -1259,8 +1354,10 @@ function renderActiveWorkout() {
                 <div class="exercise-header">
                     <div class="exercise-name">${escapeHtml(ex.name)}</div>
                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        ${isLockedPlan ? `<div class="last-performance" style="color:var(--primary); border-color:var(--primary)40;">🔒 TRAINER PLAN</div>` : ''}
                         ${lastPerf ? `<div class="last-performance">LAST: ${escapeHtml(lastPerf)}</div>` : '<div class="last-performance">FIRST TIME!</div>'}
                         ${lastEffort ? `<div class="last-performance" style="background:${lastEffort.color}20; color:${lastEffort.color}; border-color:${lastEffort.color}40;">${lastEffort.label} · ${lastEffort.adjLabel}</div>` : ''}
+                        ${!isLockedPlan ? `
                         <select class="unit-select" data-ex="${exIndex}" data-field="weightUnit">
                             <option value="lbs" ${wUnit !== 'miles' ? 'selected' : ''}>LBS</option>
                             <option value="miles" ${wUnit === 'miles' ? 'selected' : ''}>MILES</option>
@@ -1268,7 +1365,7 @@ function renderActiveWorkout() {
                         <select class="unit-select" data-ex="${exIndex}" data-field="repUnit">
                             <option value="reps" ${rUnit !== 'time' ? 'selected' : ''}>REPS</option>
                             <option value="time" ${rUnit === 'time' ? 'selected' : ''}>TIME</option>
-                        </select>
+                        </select>` : ''}
                     </div>
                 </div>
                 <div class="sets-grid">
@@ -1295,12 +1392,12 @@ function renderActiveWorkout() {
                                 </div>` :
                                 `<div style="display:flex; gap:6px; margin-top:8px;">
                                     <button class="complete-set-btn" data-ex="${exIndex}" data-set="${setIndex}" style="flex:1;">✓ COMPLETE</button>
-                                    <button class="skip-set-btn" data-ex="${exIndex}" data-set="${setIndex}" style="flex-shrink:0; padding:0 12px; background:transparent; border:1px solid var(--border); color:var(--text-secondary); font-size:12px; border-radius:8px; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:1px;">SKIP</button>
+                                    ${!isLockedPlan ? `<button class="skip-set-btn" data-ex="${exIndex}" data-set="${setIndex}" style="flex-shrink:0; padding:0 12px; background:transparent; border:1px solid var(--border); color:var(--text-secondary); font-size:12px; border-radius:8px; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:1px;">SKIP</button>` : ''}
                                 </div>`
                             }`}
                         </div>
                     `).join('')}
-                    ${!allDone ? `<button class="add-set-btn" data-ex="${exIndex}" style="width:100%; margin-top:4px; padding:10px; background:transparent; border:1px dashed var(--border); color:var(--text-secondary); border-radius:8px; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:1px; font-size:13px;">+ ADD SET</button>` : ''}
+                    ${(!allDone && !isLockedPlan) ? `<button class="add-set-btn" data-ex="${exIndex}" style="width:100%; margin-top:4px; padding:10px; background:transparent; border:1px dashed var(--border); color:var(--text-secondary); border-radius:8px; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:1px; font-size:13px;">+ ADD SET</button>` : ''}
                 </div>
                 ${allDone && hasCompleted ? `
                 <div class="effort-prompt">
@@ -1426,8 +1523,20 @@ function finishWorkout() {
     stopwatchInterval = null;
     stopwatchSeconds = 0;
     currentWorkout.endTime = new Date().toISOString();
-    workoutHistory.unshift(currentWorkout);
+    const savedWorkout = { ...currentWorkout };
+    workoutHistory.unshift(savedWorkout);
     saveToFirebase();
+    // Notify trainer if athlete is linked
+    if (userTrainerId && currentUser) {
+        addDoc(collection(db, 'workout_completions'), {
+            athleteId: currentUser.uid,
+            athleteDisplayName: window.currentUserName || currentUser.email,
+            trainerId: userTrainerId,
+            workoutName: savedWorkout.dayName || savedWorkout.planName,
+            workoutId: savedWorkout.workoutId,
+            completedAt: new Date().toISOString()
+        }).catch(() => {});
+    }
     currentWorkout = null;
     document.getElementById('workout-hero').style.display = 'block';
     document.getElementById('active-workout').style.display = 'none';
@@ -3252,7 +3361,7 @@ async function createForumPost() {
     }
 }
 
-// Make functions globally accessible for onclick handlers
+// Make functions globally accessible for onclick handlers and cross-module use
 window.removeExerciseTimer = removeExerciseTimer;
 window.deleteProgressPhoto = deleteProgressPhoto;
 window.sendKudos = sendKudos;
@@ -3265,11 +3374,27 @@ window.adminDeleteForumPost = adminDeleteForumPost;
 window.adminDeleteCommunityPlan = adminDeleteCommunityPlan;
 window.exportAdminActivityCSV = exportAdminActivityCSV;
 window.loadAdminActivity = loadAdminActivity;
+window.handleRoleSelect  = handleRoleSelect;
+window.showToastGlobal   = showToast;
+window.switchView        = switchView;
+// Expose workout plans for trainer plan assignment picker
+Object.defineProperty(window, 'myWorkoutPlans', { get: () => workoutPlans });
+Object.defineProperty(window, 'myWorkoutHistory', { get: () => workoutHistory });
+// Accept a plan pushed by trainer into athlete's plans
+window.acceptTrainerPlan = (plan) => {
+    workoutPlans.push(plan);
+    saveToFirebase();
+    renderPlans();
+};
 
 // ═════════════════════════════════════════════
 // EVENT LISTENERS
 // ═════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
+    // Capture trainer referral link param before anything else
+    const refParam = new URLSearchParams(window.location.search).get('ref');
+    if (refParam) sessionStorage.setItem('pendingTrainerRef', refParam);
+
     initTheme();
     
     // Auth listeners

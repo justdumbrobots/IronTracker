@@ -1949,3 +1949,168 @@ select.form-input:focus {
 .admin-row:hover {
     border-color: var(--primary);
 }
+
+/* ═══════════════════════════════════════════════
+   ROLE SELECTION SCREEN
+═══════════════════════════════════════════════ */
+.role-choice-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 16px;
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: border-color 0.2s, background 0.2s, transform 0.1s;
+}
+.role-choice-btn:hover {
+    border-color: var(--primary);
+    background: var(--bg-hover);
+    transform: translateY(-2px);
+}
+.role-choice-btn:active { transform: scale(0.97); }
+
+/* ═══════════════════════════════════════════════
+   NAV BADGE (notifications / unread counts)
+═══════════════════════════════════════════════ */
+.nav-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    background: var(--error, #e57373);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    border-radius: 9px;
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: 0;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+/* ═══════════════════════════════════════════════
+   TRAINER / ATHLETE SHARED COMPONENTS
+═══════════════════════════════════════════════ */
+.trainer-athlete-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+.trainer-athlete-card:hover {
+    border-color: var(--primary);
+    background: var(--bg-hover);
+}
+
+.trainer-athlete-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: var(--bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.stat-chip {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+}
+.stat-chip-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+}
+.stat-chip-label {
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════
+   MESSAGING
+═══════════════════════════════════════════════ */
+.conv-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+.conv-card:hover { border-color: var(--primary); background: var(--bg-hover); }
+.conv-card.conv-unread { border-color: var(--primary); }
+
+.conv-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.unread-badge {
+    min-width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    background: var(--primary);
+    color: var(--bg-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 0 5px;
+    flex-shrink: 0;
+}
+
+.msg-bubble {
+    max-width: 72%;
+    padding: 10px 14px;
+    border-radius: 16px;
+    word-break: break-word;
+}
+.msg-mine {
+    background: var(--primary);
+    color: var(--bg-primary);
+    border-bottom-right-radius: 4px;
+}
+.msg-theirs {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+}
