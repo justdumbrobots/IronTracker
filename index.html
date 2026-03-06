@@ -8,8 +8,8 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Iron Track">
-    <title>Iron Track - Tactical Workout Logger</title>
+    <meta name="apple-mobile-web-app-title" content="IronSyncIQ">
+    <title>IronSyncIQ - Workout Tracker</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
@@ -21,16 +21,37 @@
     <!-- Loading Screen -->
     <div id="loading-screen" class="loading-screen">
         <div class="loading-content">
-            <div class="logo" style="font-size: 48px; margin-bottom: 20px;">IRON TRACK</div>
+            <div class="logo" style="font-size: 48px; margin-bottom: 20px;">IRON<span style="color:var(--primary)">SYNC</span>IQ</div>
             <div class="loading-spinner"></div>
             <p style="color: var(--text-secondary); margin-top: 20px;">LOADING...</p>
+        </div>
+    </div>
+
+    <!-- Role Selection Screen (shown once, after first signup) -->
+    <div id="role-selection-screen" style="display:none; position:fixed; inset:0; background:var(--bg-primary); z-index:1000; align-items:center; justify-content:center; flex-direction:column; padding:24px;">
+        <div style="max-width:480px; width:100%; text-align:center;">
+            <div class="logo" style="font-size:40px; margin-bottom:8px;">IRON<span style="color:var(--primary)">SYNC</span>IQ</div>
+            <p style="color:var(--text-secondary); letter-spacing:1px; font-size:13px; text-transform:uppercase; margin-bottom:40px;">WELCOME — HOW WILL YOU USE THE APP?</p>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:32px;">
+                <button class="role-choice-btn" onclick="window.handleRoleSelect('athlete')">
+                    <div style="font-size:48px; margin-bottom:12px;">🏋️</div>
+                    <div style="font-family:'Barlow Condensed',sans-serif; font-size:24px; font-weight:800; letter-spacing:1px;">ATHLETE</div>
+                    <div style="font-size:12px; color:var(--text-secondary); margin-top:8px; line-height:1.5;">TRACK WORKOUTS,<br>LOG PROGRESS,<br>WORK WITH A TRAINER</div>
+                </button>
+                <button class="role-choice-btn" onclick="window.handleRoleSelect('trainer')">
+                    <div style="font-size:48px; margin-bottom:12px;">📋</div>
+                    <div style="font-family:'Barlow Condensed',sans-serif; font-size:24px; font-weight:800; letter-spacing:1px;">TRAINER</div>
+                    <div style="font-size:12px; color:var(--text-secondary); margin-top:8px; line-height:1.5;">MANAGE ATHLETES,<br>ASSIGN PLANS,<br>TRACK PROGRESS</div>
+                </button>
+            </div>
+            <p style="color:var(--text-muted); font-size:12px;">YOU CAN CHANGE YOUR ROLE LATER IN SETTINGS</p>
         </div>
     </div>
 
     <!-- Auth Screen -->
     <div id="auth-screen" class="auth-screen" style="display: none;">
         <div class="auth-container">
-            <div class="logo" style="font-size: 48px; margin-bottom: 10px; text-align: center;">IRON TRACK</div>
+            <div class="logo" style="font-size: 48px; margin-bottom: 10px; text-align: center;">IRON<span style="color:var(--primary)">SYNC</span>IQ</div>
             <p style="color: var(--text-secondary); text-align: center; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 1px; font-size: 13px;">TRACK YOUR LIFTS</p>
             
             <div id="login-form" class="auth-form">
@@ -94,7 +115,7 @@
             <div class="install-content">
                 <div class="install-icon">📱</div>
                 <div class="install-text">
-                    <div class="install-title">INSTALL IRON TRACK</div>
+                    <div class="install-title">INSTALL IRONSYNCIQ</div>
                     <div class="install-subtitle">GET THE FULL APP EXPERIENCE</div>
                 </div>
                 <button class="btn btn-small" id="install-btn">INSTALL</button>
@@ -105,13 +126,15 @@
         <header>
             <div class="container">
                 <div class="header-content">
-                    <div class="logo">IRON TRACK</div>
+                    <div class="logo">IRON<span style="color:var(--primary)">SYNC</span>IQ</div>
                     <nav class="nav-tabs">
                         <button class="nav-tab active" data-view="workout">WORKOUT</button>
                         <button class="nav-tab" data-view="plans">MY PLANS</button>
                         <button class="nav-tab" data-view="library">LIBRARY</button>
                         <button class="nav-tab" data-view="community">COMMUNITY</button>
                         <button class="nav-tab" data-view="progress">PROGRESS</button>
+                        <button class="nav-tab" data-view="trainer" id="trainer-nav-tab" style="display:none;">COACHING <span class="nav-badge" id="trainer-requests-badge" style="display:none;"></span></button>
+                        <button class="nav-tab" data-view="messages" id="messages-nav-tab" style="display:none;">MESSAGES <span class="nav-badge" id="messages-nav-badge" style="display:none;"></span></button>
                         <button class="nav-tab" data-view="profile">PROFILE</button>
                         <button class="nav-tab" data-view="admin" id="admin-nav-tab" style="display:none;">⚙️ ADMIN</button>
                     </nav>
@@ -281,6 +304,44 @@
                 </div>
             </div>
 
+            <!-- TRAINER VIEW (coaches only) -->
+            <div id="trainer-view" class="view">
+                <h2 style="font-family:'Barlow Condensed',sans-serif; font-size:36px; font-weight:800; text-transform:uppercase; letter-spacing:2px; margin-bottom:6px;">COACHING</h2>
+                <p style="color:var(--text-secondary); font-size:14px; text-transform:uppercase; letter-spacing:1px; margin-bottom:20px;">MANAGE YOUR ATHLETES</p>
+                <div class="community-sub-tabs" style="margin-bottom:20px;">
+                    <button class="trainer-tab community-tab active" data-pane="athletes" onclick="switchTrainerPane('athletes')">MY ATHLETES</button>
+                    <button class="trainer-tab community-tab" data-pane="requests" onclick="switchTrainerPane('requests')">REQUESTS <span class="nav-badge" id="trainer-requests-badge2" style="display:none;"></span></button>
+                    <button class="trainer-tab community-tab" data-pane="assign" onclick="switchTrainerPane('assign')">ASSIGN PLAN</button>
+                    <button class="trainer-tab community-tab" data-pane="profile" onclick="switchTrainerPane('profile')">MY PROFILE</button>
+                </div>
+                <div id="trainer-athletes-pane"><p style="color:var(--text-secondary);">LOADING...</p></div>
+                <div id="trainer-requests-pane" style="display:none;"></div>
+                <div id="trainer-assign-pane" style="display:none;"></div>
+                <div id="trainer-profile-pane" style="display:none;"></div>
+            </div>
+
+            <!-- MESSAGES VIEW -->
+            <div id="messages-view" class="view">
+                <h2 style="font-family:'Barlow Condensed',sans-serif; font-size:36px; font-weight:800; text-transform:uppercase; letter-spacing:2px; margin-bottom:20px;">MESSAGES</h2>
+                <!-- Conversation list panel -->
+                <div id="messages-list-panel">
+                    <div id="messages-list"></div>
+                </div>
+                <!-- Active thread panel -->
+                <div id="messages-thread" style="display:none;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+                        <button class="btn btn-secondary btn-small" onclick="closeMessageThread()">← BACK</button>
+                        <div style="font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:20px;" id="messages-thread-title"></div>
+                    </div>
+                    <div id="messages-feed" style="min-height:200px; max-height:55vh; overflow-y:auto; padding:8px 0; margin-bottom:16px;"></div>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" class="form-input" id="message-input" placeholder="TYPE A MESSAGE..." maxlength="1000" style="flex:1;"
+                            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault(); sendMessage();}">
+                        <button class="btn" onclick="sendMessage()">SEND</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- ADMIN VIEW -->
             <div id="admin-view" class="view">
                 <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px;">⚙️ ADMIN PANEL</h2>
@@ -426,7 +487,13 @@
             <!-- PROFILE VIEW -->
             <div id="profile-view" class="view">
                 <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 30px;">PROFILE</h2>
-                
+
+                <!-- Coaching Panel (athletes: trainer link/directory; trainers: hidden) -->
+                <div class="chart-container" id="coaching-section" style="margin-bottom:24px;">
+                    <h3 style="font-size:20px; margin-bottom:16px; font-family:'Barlow Condensed',sans-serif; text-transform:uppercase; display:flex; align-items:center; gap:10px;">COACHING <span class="nav-badge" id="assignments-badge" style="display:none;"></span></h3>
+                    <div id="coaching-panel"><p style="color:var(--text-secondary);">LOADING...</p></div>
+                </div>
+
                 <!-- User Info -->
                 <div class="chart-container">
                     <div style="text-align: center; padding: 40px 20px;">
@@ -813,8 +880,21 @@
         </div>
     </div>
 
+    <!-- Athlete Workout Detail Modal (viewed by trainer) -->
+    <div id="athlete-workout-modal" class="modal">
+        <div class="modal-content" style="max-width:660px;">
+            <div class="modal-header" id="athlete-workout-title">WORKOUT DETAILS</div>
+            <div id="athlete-workout-body" style="max-height:65vh; overflow-y:auto;"></div>
+            <div style="margin-top:20px; text-align:right;">
+                <button class="btn btn-secondary" onclick="document.getElementById('athlete-workout-modal').classList.remove('active')">CLOSE</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase SDK -->
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="app.js"></script>
+    <script type="module" src="trainer.js"></script>
+    <script type="module" src="messaging.js"></script>
 </body>
 </html>
