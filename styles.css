@@ -4,52 +4,60 @@
    THEME VARIABLES
    ═══════════════════════════════════════════ */
 
+/* ── IronSyncIQ Brand Palette ─────────────────────────────────────
+   Obsidian Black  #000000  — foundational background
+   Active Red      #CC2428  — CTAs, active states, intensity
+   Stark White     #FFFFFF  — headers, critical data (light theme bg)
+   Grid Grey       #4D4D4D  — secondary elements, labels, chart lines
+   Steel Silver    #EBEBEB  — body text, inputs, data display
+   ────────────────────────────────────────────────────────────────── */
+
 /* Dark Theme (Default) */
 :root {
-    --bg-primary: #000000;
-    --bg-secondary: #0f1419;
-    --bg-card: #16181c;
-    --bg-hover: #1e2128;
-    --text-primary: #e7e9ea;
-    --text-secondary: #71767b;
-    --text-muted: #3e4144;
-    --border: #2f3336;
-    --border-light: #1e2128;
+    --bg-primary:    #000000;   /* Obsidian Black */
+    --bg-secondary:  #0a0a0a;
+    --bg-card:       #111111;
+    --bg-hover:      #1a1a1a;
+    --text-primary:  #EBEBEB;   /* Steel Silver */
+    --text-secondary:#4D4D4D;   /* Grid Grey */
+    --text-muted:    #2a2a2a;
+    --border:        #2a2a2a;
+    --border-light:  #1a1a1a;
 
-    --primary: #1a1a1a;
-    --primary-dark: #000000;
-    --primary-light: #333333;
+    --primary:       #CC2428;   /* Active Red */
+    --primary-dark:  #a81c20;
+    --primary-light: #d94548;
 
-    --accent: #1a1a1a;
-    --accent-dark: #000000;
-    --success: #00ba7c;
-    --warning: #ffd400;
-    --danger: #f4212e;
-    --error: #f4212e;
+    --accent:        #CC2428;
+    --accent-dark:   #a81c20;
+    --success:       #00ba7c;
+    --warning:       #ffd400;
+    --danger:        #CC2428;
+    --error:         #CC2428;
 }
 
 /* Light Theme */
 [data-theme="light"] {
-    --bg-primary: #ffffff;
-    --bg-secondary: #f7f9f9;
-    --bg-card: #ffffff;
-    --bg-hover: #eff3f4;
-    --text-primary: #0f1419;
-    --text-secondary: #536471;
-    --text-muted: #8899a6;
-    --border: #cfd9de;
-    --border-light: #eff3f4;
+    --bg-primary:    #ffffff;   /* Stark White */
+    --bg-secondary:  #f5f5f5;
+    --bg-card:       #ffffff;
+    --bg-hover:      #EBEBEB;   /* Steel Silver as surface */
+    --text-primary:  #000000;   /* Obsidian Black */
+    --text-secondary:#4D4D4D;   /* Grid Grey */
+    --text-muted:    #999999;
+    --border:        #d5d5d5;
+    --border-light:  #EBEBEB;
 
-    --primary: #1a1a1a;
-    --primary-dark: #000000;
-    --primary-light: #333333;
+    --primary:       #CC2428;   /* Active Red */
+    --primary-dark:  #a81c20;
+    --primary-light: #d94548;
 
-    --accent: #1a1a1a;
-    --accent-dark: #000000;
-    --success: #00ba7c;
-    --warning: #e6a000;
-    --danger: #f4212e;
-    --error: #f4212e;
+    --accent:        #CC2428;
+    --accent-dark:   #a81c20;
+    --success:       #00ba7c;
+    --warning:       #e6a000;
+    --danger:        #CC2428;
+    --error:         #CC2428;
 }
 
 /* ═══════════════════════════════════════════
@@ -101,7 +109,7 @@ body {
     width: 60px;
     height: 60px;
     border: 4px solid var(--border);
-    border-top-color: var(--text-primary);
+    border-top-color: var(--primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     margin: 0 auto;
@@ -208,7 +216,7 @@ header {
 .nav-tab.active {
     color: var(--text-primary);
     font-weight: 700;
-    border-bottom-color: #ffffff;
+    border-bottom-color: var(--primary);
 }
 
 .nav-tab::before { display: none; }
@@ -369,7 +377,7 @@ header {
 
 .selected-plan {
     border-color: var(--primary) !important;
-    box-shadow: 0 0 0 2px rgba(29, 155, 240, 0.25) !important;
+    box-shadow: 0 0 0 2px rgba(204, 36, 40, 0.25) !important;
 }
 
 /* ═══════════════════════════════════════════
@@ -511,7 +519,7 @@ header {
 .set-input:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(29, 155, 240, 0.2);
+    box-shadow: 0 0 0 2px rgba(204, 36, 40, 0.2);
 }
 
 .complete-set-btn {
@@ -767,7 +775,7 @@ select.form-input {
 select.form-input:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 2px rgba(29, 155, 240, 0.2);
+    box-shadow: 0 0 0 2px rgba(204, 36, 40, 0.2);
 }
 
 /* ═══════════════════════════════════════════
@@ -1590,7 +1598,7 @@ select.form-input:focus {
     color: var(--text-secondary);
 }
 .reaction-btn:hover { border-color: var(--primary); }
-.reaction-btn.active { background: rgba(29, 155, 240, 0.15); border-color: var(--primary); color: var(--primary); }
+.reaction-btn.active { background: rgba(204, 36, 40, 0.15); border-color: var(--primary); color: var(--primary); }
 .reaction-btn.active span { color: var(--primary); }
 
 /* ── Comments / Replies ───────────────────── */
