@@ -6,7 +6,7 @@
   "scope": "/IronTracker/",
   "display": "standalone",
   "background_color": "#0a0a0a",
-  "theme_color": "#ff4d00",
+  "theme_color": "#1d9bf0",
   "orientation": "portrait-primary",
   "icons": [
     {
