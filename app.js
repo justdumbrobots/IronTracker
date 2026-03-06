@@ -124,14 +124,16 @@ function updateThemeToggle(theme) {
 // AUTHENTICATION
 // ═════════════════════════════════════════════
 onAuthStateChanged(auth, (user) => {
-    if (user) {
-        currentUser = user;
-        loadUserData();
-        showMainApp();
-    } else {
-        currentUser = null;
-        showAuthScreen();
-    }
+    setTimeout(() => {
+        if (user) {
+            currentUser = user;
+            loadUserData();
+            showMainApp();
+        } else {
+            currentUser = null;
+            showAuthScreen();
+        }
+    }, 1000);
 });
 
 function showAuthScreen() {
