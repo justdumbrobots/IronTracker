@@ -290,6 +290,7 @@
                     <button class="admin-tab community-tab active" data-pane="users">👥 USERS</button>
                     <button class="admin-tab community-tab" data-pane="forum">💬 FORUM</button>
                     <button class="admin-tab community-tab" data-pane="plans">🏋️ PLANS</button>
+                    <button class="admin-tab community-tab" data-pane="activity">📊 ACTIVITY</button>
                 </div>
 
                 <!-- Users pane -->
@@ -314,6 +315,15 @@
                         <button class="btn btn-small" onclick="loadAdminPlans()">↺ REFRESH</button>
                     </div>
                     <div id="admin-plans-list"><p style="color:var(--text-secondary);">Loading...</p></div>
+                </div>
+
+                <!-- Activity pane -->
+                <div id="admin-activity-pane" style="display:none;">
+                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-bottom:12px;">
+                        <button class="btn btn-small btn-secondary" onclick="exportAdminActivityCSV()">⬇ EXPORT CSV</button>
+                        <button class="btn btn-small" onclick="loadAdminActivity()">↺ REFRESH</button>
+                    </div>
+                    <div id="admin-activity-list"><p style="color:var(--text-secondary);">Loading...</p></div>
                 </div>
             </div>
 

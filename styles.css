@@ -426,6 +426,12 @@ header {
     background: rgba(0, 186, 124, 0.08);
 }
 
+.set-box.skipped {
+    border-color: var(--border);
+    background: transparent;
+    opacity: 0.5;
+}
+
 .set-number {
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 11px;
@@ -504,19 +510,13 @@ header {
 
 .rest-timer.active {
     display: flex;
-    animation: timerPulse 2s infinite;
-}
-
-@keyframes timerPulse {
-    0%, 100% { opacity: 1; }
-    50%       { opacity: 0.85; }
 }
 
 .rest-timer .timer-display {
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 36px;
     font-weight: 800;
-    color: var(--primary);
+    color: #ffffff;
     line-height: 1;
     margin: 0;
 }

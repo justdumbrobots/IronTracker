@@ -88,6 +88,7 @@ let activeCommunityPane = 'plans';   // Remembered across main-nav tab switches
 // Admin
 const ADMIN_EMAIL = 'justdumbrobots@gmail.com';
 let adminActivePane = 'users';
+let adminActivityData = [];
 function isAdmin() { return currentUser?.email === ADMIN_EMAIL; }
 
 // ═════════════════════════════════════════════
@@ -1258,8 +1259,13 @@ function renderActiveWorkout() {
                 </div>
                 <div class="sets-grid">
                     ${ex.sets.map((set, setIndex) => `
-                        <div class="set-box ${set.completed ? 'completed' : ''}">
+                        <div class="set-box ${set.completed ? 'completed' : set.skipped ? 'skipped' : ''}">
                             <div class="set-number">SET ${setIndex + 1}</div>
+                            ${set.skipped ? `
+                                <div style="display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap;">
+                                    <span style="color:var(--text-secondary); font-weight:600; font-size:13px; font-family:'Barlow Condensed',sans-serif;">— SKIPPED</span>
+                                    <button class="edit-set-btn" data-ex="${exIndex}" data-set="${setIndex}" style="font-size:11px; padding:2px 8px;">UNDO</button>
+                                </div>` : `
                             <div class="set-input-group">
                                 <input type="number" inputmode="decimal" class="set-input" placeholder="${wPlaceholder}"
                                     value="${set.weight}" data-ex="${exIndex}" data-set="${setIndex}" data-field="weight"
@@ -1273,10 +1279,14 @@ function renderActiveWorkout() {
                                     <span style="color: var(--success); font-weight: 600; font-size: 13px; font-family: 'Barlow Condensed', sans-serif;">✓ DONE - ${set.weight} ${wUnit === 'miles' ? 'MI' : 'LBS'} × ${set.reps} ${rUnit === 'time' ? 'S' : 'REPS'}</span>
                                     <button class="edit-set-btn" data-ex="${exIndex}" data-set="${setIndex}" style="font-size:11px; padding:2px 8px;">EDIT</button>
                                 </div>` :
-                                `<button class="complete-set-btn" data-ex="${exIndex}" data-set="${setIndex}">✓ COMPLETE</button>`
-                            }
+                                `<div style="display:flex; gap:6px; margin-top:8px;">
+                                    <button class="complete-set-btn" data-ex="${exIndex}" data-set="${setIndex}" style="flex:1;">✓ COMPLETE</button>
+                                    <button class="skip-set-btn" data-ex="${exIndex}" data-set="${setIndex}" style="flex-shrink:0; padding:0 12px; background:transparent; border:1px solid var(--border); color:var(--text-secondary); font-size:12px; border-radius:8px; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:1px;">SKIP</button>
+                                </div>`
+                            }`}
                         </div>
                     `).join('')}
+                    <button class="add-set-btn" data-ex="${exIndex}" style="width:100%; margin-top:4px; padding:10px; background:transparent; border:1px dashed var(--border); color:var(--text-secondary); border-radius:8px; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:1px; font-size:13px;">+ ADD SET</button>
                 </div>
             </div>
         `;
@@ -1309,6 +1319,22 @@ function renderActiveWorkout() {
             const ex = parseInt(btn.dataset.ex);
             const set = parseInt(btn.dataset.set);
             currentWorkout.exercises[ex].sets[set].completed = false;
+            currentWorkout.exercises[ex].sets[set].skipped = false;
+            renderActiveWorkout();
+        });
+    });
+    container.querySelectorAll('.skip-set-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const ex = parseInt(btn.dataset.ex);
+            const set = parseInt(btn.dataset.set);
+            currentWorkout.exercises[ex].sets[set].skipped = true;
+            renderActiveWorkout();
+        });
+    });
+    container.querySelectorAll('.add-set-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const ex = parseInt(btn.dataset.ex);
+            currentWorkout.exercises[ex].sets.push({ weight: '', reps: '', completed: false });
             renderActiveWorkout();
         });
     });
@@ -2911,9 +2937,11 @@ function switchAdminPane(pane) {
     document.getElementById('admin-users-pane').style.display = pane === 'users' ? '' : 'none';
     document.getElementById('admin-forum-pane').style.display = pane === 'forum' ? '' : 'none';
     document.getElementById('admin-plans-pane').style.display = pane === 'plans' ? '' : 'none';
+    document.getElementById('admin-activity-pane').style.display = pane === 'activity' ? '' : 'none';
     if (pane === 'users') loadAdminUsers();
     if (pane === 'forum') loadAdminForum();
     if (pane === 'plans') loadAdminPlans();
+    if (pane === 'activity') loadAdminActivity();
 }
 
 async function loadAdminUsers() {
@@ -2993,6 +3021,80 @@ async function loadAdminPlans() {
         console.error('Admin plans error:', e);
         el.innerHTML = `<p style="color:var(--error);">ERROR: ${escapeHtml(e.message)}</p>`;
     }
+}
+
+async function loadAdminActivity() {
+    if (!isAdmin()) return;
+    const el = document.getElementById('admin-activity-list');
+    el.innerHTML = '<p style="color:var(--text-secondary);">Loading...</p>';
+    try {
+        const usersSnap = await getDocs(collection(db, 'users'));
+        if (usersSnap.empty) { el.innerHTML = '<p style="color:var(--text-secondary);">NO USERS FOUND.</p>'; return; }
+
+        const userData = await Promise.all(usersSnap.docs.map(async d => {
+            const u = d.data();
+            let workoutCount = 0;
+            try {
+                const wdSnap = await getDoc(doc(db, 'users', d.id, 'data', 'workout_data'));
+                if (wdSnap.exists()) workoutCount = (wdSnap.data().workoutHistory || []).length;
+            } catch {}
+            return {
+                displayName: u.displayName || '—',
+                email: u.email || d.id,
+                lastSeen: u.lastSeen || null,
+                workoutCount
+            };
+        }));
+
+        userData.sort((a, b) => (b.lastSeen || '') > (a.lastSeen || '') ? 1 : -1);
+        adminActivityData = userData;
+
+        el.innerHTML = `
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                    <thead>
+                        <tr style="border-bottom:2px solid var(--border); color:var(--text-secondary); font-size:11px; text-transform:uppercase; letter-spacing:1px;">
+                            <th style="text-align:left; padding:8px 6px;">NAME</th>
+                            <th style="text-align:left; padding:8px 6px;">EMAIL</th>
+                            <th style="text-align:center; padding:8px 6px;">WORKOUTS</th>
+                            <th style="text-align:left; padding:8px 6px;">LAST LOGIN</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${userData.map(u => `
+                            <tr style="border-bottom:1px solid var(--border);">
+                                <td style="padding:10px 6px; font-weight:700; font-family:'Barlow Condensed',sans-serif; font-size:15px;">${escapeHtml(u.displayName)}</td>
+                                <td style="padding:10px 6px; color:var(--text-secondary); font-size:12px;">${escapeHtml(u.email)}</td>
+                                <td style="padding:10px 6px; text-align:center; font-weight:800; font-size:22px; font-family:'Barlow Condensed',sans-serif; color:var(--text-primary);">${u.workoutCount}</td>
+                                <td style="padding:10px 6px; color:var(--text-secondary); font-size:12px;">${u.lastSeen ? new Date(u.lastSeen).toLocaleString() : 'NEVER'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>`;
+    } catch (e) {
+        console.error('Admin activity error:', e);
+        el.innerHTML = `<p style="color:var(--error);">ERROR: ${escapeHtml(e.message)}</p>`;
+    }
+}
+
+function exportAdminActivityCSV() {
+    if (!adminActivityData.length) { showToast('LOAD ACTIVITY FIRST', 'error'); return; }
+    const rows = [
+        ['Name', 'Email', 'Workouts Completed', 'Last Login'],
+        ...adminActivityData.map(u => [
+            u.displayName, u.email, u.workoutCount,
+            u.lastSeen ? new Date(u.lastSeen).toLocaleString() : 'Never'
+        ])
+    ];
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `irontracker-activity-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 async function adminDeleteForumPost(postId) {
