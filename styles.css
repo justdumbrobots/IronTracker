@@ -208,7 +208,7 @@ header {
 .nav-tab.active {
     color: var(--text-primary);
     font-weight: 700;
-    border-bottom-color: var(--primary);
+    border-bottom-color: #ffffff;
 }
 
 .nav-tab::before { display: none; }
@@ -1840,9 +1840,9 @@ select.form-input:focus {
     }
 
     .nav-tab.active {
-        border-top-color: var(--primary);
+        border-top-color: #ffffff;
         border-bottom: none;
-        color: var(--primary);
+        color: #ffffff;
     }
 
     /* Add bottom padding to main content so it isn't hidden under the nav */
