@@ -1,67 +1,55 @@
-/* Iron Track - BRCC-Inspired Tactical Design */
+/* Iron Track - Modern Dark Design */
 
 /* ═══════════════════════════════════════════
    THEME VARIABLES
    ═══════════════════════════════════════════ */
 
-/* Dark Theme (Default - Tactical) */
+/* Dark Theme (Default) */
 :root {
-    --bg-primary: #0a0a0a;
-    --bg-secondary: #141414;
-    --bg-card: #1a1a1a;
-    --bg-hover: #222222;
-    --text-primary: #ffffff;
-    --text-secondary: #a0a0a0;
-    --text-muted: #666666;
-    --border: #2a2a2a;
-    --border-light: #1a1a1a;
-    
-    /* BRCC-Inspired Tactical Colors */
-    --tactical-red: #c41e3a;
-    --tactical-green: #2d5016;
-    --tactical-tan: #d4a574;
-    --tactical-gray: #4a4a4a;
-    
-    /* Primary Actions */
-    --primary: #c41e3a;
-    --primary-dark: #9a1829;
-    --primary-light: #d63851;
-    
-    /* Accents */
-    --accent: #2d5016;
-    --accent-dark: #1f3810;
-    --success: #2d5016;
-    --warning: #d4a574;
-    --danger: #c41e3a;
+    --bg-primary: #000000;
+    --bg-secondary: #0f1419;
+    --bg-card: #16181c;
+    --bg-hover: #1e2128;
+    --text-primary: #e7e9ea;
+    --text-secondary: #71767b;
+    --text-muted: #3e4144;
+    --border: #2f3336;
+    --border-light: #1e2128;
+
+    --primary: #1d9bf0;
+    --primary-dark: #1a8cd8;
+    --primary-light: #4aadff;
+
+    --accent: #1d9bf0;
+    --accent-dark: #1a8cd8;
+    --success: #00ba7c;
+    --warning: #ffd400;
+    --danger: #f4212e;
+    --error: #f4212e;
 }
 
 /* Light Theme */
 [data-theme="light"] {
-    --bg-primary: #f5f5f5;
-    --bg-secondary: #ffffff;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f7f9f9;
     --bg-card: #ffffff;
-    --bg-hover: #f0f0f0;
-    --text-primary: #1a1a1a;
-    --text-secondary: #666666;
-    --text-muted: #999999;
-    --border: #e0e0e0;
-    --border-light: #f0f0f0;
-    
-    /* Keep tactical colors but adjust */
-    --tactical-red: #c41e3a;
-    --tactical-green: #2d5016;
-    --tactical-tan: #d4a574;
-    --tactical-gray: #888888;
-    
-    --primary: #c41e3a;
-    --primary-dark: #9a1829;
-    --primary-light: #d63851;
-    
-    --accent: #2d5016;
-    --accent-dark: #1f3810;
-    --success: #2d5016;
-    --warning: #d4a574;
-    --danger: #c41e3a;
+    --bg-hover: #eff3f4;
+    --text-primary: #0f1419;
+    --text-secondary: #536471;
+    --text-muted: #8899a6;
+    --border: #cfd9de;
+    --border-light: #eff3f4;
+
+    --primary: #1d9bf0;
+    --primary-dark: #1a8cd8;
+    --primary-light: #4aadff;
+
+    --accent: #1d9bf0;
+    --accent-dark: #1a8cd8;
+    --success: #00ba7c;
+    --warning: #e6a000;
+    --danger: #f4212e;
+    --error: #f4212e;
 }
 
 /* ═══════════════════════════════════════════
@@ -75,29 +63,12 @@
 }
 
 body {
-    font-family: 'Work Sans', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
     background: var(--bg-primary);
     color: var(--text-primary);
     overflow-x: hidden;
     transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-/* Subtle tactical texture overlay */
-body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image: 
-        repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 2px,
-            rgba(255,255,255,0.01) 2px,
-            rgba(255,255,255,0.01) 4px
-        );
-    pointer-events: none;
-    z-index: 0;
-    opacity: 0.3;
+    -webkit-font-smoothing: antialiased;
 }
 
 .container {
@@ -152,14 +123,14 @@ body::before {
 }
 
 .auth-container {
-    background: var(--bg-card);
-    border: 3px solid var(--primary);
-    border-radius: 2px;
-    padding: 48px;
-    max-width: 450px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    max-width: 420px;
     width: 90%;
     margin: 20px;
-    box-shadow: 0 0 40px rgba(196, 30, 58, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
 .auth-form {
@@ -181,81 +152,66 @@ body::before {
    ═══════════════════════════════════════════ */
 
 header {
-    padding: 20px 0;
-    border-bottom: 3px solid var(--primary);
-    margin-bottom: 40px;
-    background: var(--bg-secondary);
-    backdrop-filter: blur(12px);
+    padding: 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+    background: rgba(0, 0, 0, 0.88);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     position: sticky;
     top: 0;
     z-index: 100;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 .header-content {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: stretch;
 }
 
 .logo {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 36px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    font-size: 20px;
     font-weight: 800;
-    letter-spacing: 2px;
-    color: var(--primary);
+    letter-spacing: -0.3px;
+    color: var(--text-primary);
     text-transform: uppercase;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 .nav-tabs {
     display: flex;
-    gap: 4px;
+    gap: 0;
 }
 
 .nav-tab {
     background: transparent;
-    border: 2px solid var(--border);
+    border: none;
+    border-bottom: 2px solid transparent;
     color: var(--text-secondary);
-    padding: 10px 18px;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 14px;
-    font-weight: 700;
+    padding: 18px 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 1.5px;
+    letter-spacing: 0.5px;
     cursor: pointer;
-    transition: all 0.2s;
-    border-radius: 0;
+    transition: color 0.15s, border-color 0.15s;
     position: relative;
-}
-
-.nav-tab::before {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: var(--primary);
-    transform: scaleX(0);
-    transition: transform 0.2s;
+    white-space: nowrap;
 }
 
 .nav-tab:hover {
-    border-color: var(--primary);
     color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .nav-tab.active {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: #ffffff;
-    font-weight: 800;
+    color: var(--text-primary);
+    font-weight: 700;
+    border-bottom-color: var(--primary);
 }
 
-.nav-tab.active::before {
-    transform: scaleX(1);
-}
+.nav-tab::before { display: none; }
 
 /* ═══════════════════════════════════════════
    VIEWS
@@ -286,37 +242,23 @@ header {
    ═══════════════════════════════════════════ */
 
 .hero-workout {
-    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-hover) 100%);
-    border: 3px solid var(--primary);
-    border-radius: 0;
-    padding: 50px;
-    margin-bottom: 40px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 36px;
+    margin-bottom: 24px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 10px 40px rgba(196, 30, 58, 0.2);
-}
-
-.hero-workout::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(196, 30, 58, 0.15) 0%, transparent 70%);
-    pointer-events: none;
 }
 
 .hero-workout h2 {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 56px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    font-size: 36px;
     font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 16px;
-    position: relative;
+    letter-spacing: 0;
+    margin-bottom: 12px;
     line-height: 1.1;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 /* ═══════════════════════════════════════════
@@ -327,80 +269,57 @@ header {
     background: var(--primary);
     color: #ffffff;
     border: none;
-    padding: 16px 36px;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 16px;
-    font-weight: 800;
+    padding: 10px 24px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 0.3px;
     cursor: pointer;
-    transition: all 0.2s;
-    border-radius: 0;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 4px 15px rgba(196, 30, 58, 0.4);
-}
-
-.btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-    transition: left 0.5s;
-}
-
-.btn:hover::before {
-    left: 100%;
+    transition: background 0.15s;
+    border-radius: 9999px;
 }
 
 .btn:hover {
     background: var(--primary-dark);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(196, 30, 58, 0.6);
 }
 
 .btn:active {
-    transform: translateY(0);
+    opacity: 0.85;
 }
 
 .btn:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
-    transform: none;
 }
 
 .btn-secondary {
     background: transparent;
-    border: 2px solid var(--primary);
-    color: var(--primary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
     box-shadow: none;
 }
 
 .btn-secondary:hover {
-    background: var(--primary);
-    color: #ffffff;
+    background: var(--bg-hover);
 }
 
 .btn-small {
-    padding: 10px 20px;
-    font-size: 12px;
+    padding: 6px 16px;
+    font-size: 13px;
 }
 
 .btn-remove {
     background: var(--danger);
     color: #fff;
     border: none;
-    padding: 8px 14px;
-    font-size: 11px;
-    border-radius: 0;
+    padding: 6px 14px;
+    font-size: 12px;
+    border-radius: 9999px;
     cursor: pointer;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
 }
 
 /* ═══════════════════════════════════════════
@@ -416,36 +335,20 @@ header {
 
 .plan-card {
     background: var(--bg-card);
-    border: 2px solid var(--border);
-    border-radius: 0;
-    padding: 28px;
-    transition: all 0.3s;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    transition: background 0.15s, border-color 0.15s;
     position: relative;
 }
 
-.plan-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 4px;
-    height: 0;
-    background: var(--primary);
-    transition: height 0.3s;
-}
-
-.plan-card:hover::before {
-    height: 100%;
-}
-
 .plan-card:hover {
-    border-color: var(--primary);
-    transform: translateY(-4px);
-    box-shadow: 0 10px 30px rgba(196, 30, 58, 0.3);
+    background: var(--bg-hover);
+    border-color: var(--text-muted);
 }
 
 .plan-card h3 {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 24px;
     font-weight: 800;
     text-transform: uppercase;
@@ -459,14 +362,14 @@ header {
     color: var(--text-secondary);
     font-size: 13px;
     margin-bottom: 16px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
 
 .selected-plan {
-    border-color: var(--success) !important;
-    box-shadow: 0 0 0 3px rgba(45, 80, 22, 0.3) !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 2px rgba(29, 155, 240, 0.25) !important;
 }
 
 /* ═══════════════════════════════════════════
@@ -475,11 +378,10 @@ header {
 
 .exercise-item {
     background: var(--bg-card);
-    border: 2px solid var(--border);
-    border-radius: 0;
-    padding: 24px;
-    margin-bottom: 20px;
-    border-left: 4px solid var(--primary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
 }
 
 .exercise-header {
@@ -490,7 +392,7 @@ header {
 }
 
 .exercise-name {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 24px;
     font-weight: 800;
     text-transform: uppercase;
@@ -500,7 +402,7 @@ header {
 .last-performance {
     color: var(--text-secondary);
     font-size: 13px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     text-transform: uppercase;
 }
 
@@ -512,20 +414,20 @@ header {
 
 .set-box {
     background: var(--bg-hover);
-    border: 2px solid var(--border);
-    border-radius: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
     padding: 14px;
     text-align: center;
-    transition: all 0.2s;
+    transition: border-color 0.15s;
 }
 
 .set-box.completed {
     border-color: var(--success);
-    background: rgba(45, 80, 22, 0.2);
+    background: rgba(0, 186, 124, 0.08);
 }
 
 .set-number {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 11px;
     font-weight: 700;
     color: var(--text-secondary);
@@ -541,43 +443,43 @@ header {
 }
 
 .set-input {
-    width: 50px;
+    width: 54px;
     background: var(--bg-primary);
-    border: 2px solid var(--border);
+    border: 1px solid var(--border);
     color: var(--text-primary);
     text-align: center;
     padding: 8px 4px;
     font-size: 16px;
     font-weight: 700;
-    border-radius: 0;
-    font-family: 'Barlow Condensed', sans-serif;
+    border-radius: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
 }
 
 .set-input:focus {
     outline: none;
     border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(29, 155, 240, 0.2);
 }
 
 .complete-set-btn {
     width: 100%;
     margin-top: 10px;
-    padding: 10px;
+    padding: 8px 10px;
     background: var(--success);
     color: #ffffff;
     border: none;
-    border-radius: 0;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 800;
+    border-radius: 9999px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.3px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: opacity 0.15s;
     font-size: 12px;
 }
 
 .complete-set-btn:hover {
-    background: var(--accent-dark);
-    transform: translateY(-1px);
+    opacity: 0.85;
 }
 
 /* ═══════════════════════════════════════════
@@ -589,15 +491,15 @@ header {
     left: 0;
     right: 0;
     z-index: 101;
-    background: var(--bg-card);
-    border-bottom: 3px solid var(--primary);
+    background: rgba(0, 0, 0, 0.95);
+    border-bottom: 1px solid var(--border);
     padding: 10px 20px;
     display: none;
     align-items: center;
     justify-content: center;
     gap: 20px;
     flex-wrap: wrap;
-    box-shadow: 0 4px 20px rgba(196, 30, 58, 0.35);
+    backdrop-filter: blur(16px);
 }
 
 .rest-timer.active {
@@ -606,16 +508,15 @@ header {
 }
 
 @keyframes timerPulse {
-    0%, 100% { border-bottom-color: var(--primary); }
-    50%       { border-bottom-color: var(--primary-light); }
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.85; }
 }
 
 .rest-timer .timer-display {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 36px;
     font-weight: 800;
     color: var(--primary);
-    text-shadow: 0 0 12px rgba(196, 30, 58, 0.5);
     line-height: 1;
     margin: 0;
 }
@@ -625,7 +526,7 @@ header {
     text-transform: uppercase;
     letter-spacing: 3px;
     font-size: 12px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-weight: 700;
 }
 
@@ -638,12 +539,11 @@ header {
 
 /* Standalone .timer-display used by stopwatch (not inside .rest-timer) */
 .timer-display {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 72px;
     font-weight: 800;
     color: var(--primary);
     margin-bottom: 12px;
-    text-shadow: 0 0 20px rgba(196, 30, 58, 0.5);
 }
 
 .timer-label {
@@ -651,7 +551,7 @@ header {
     text-transform: uppercase;
     letter-spacing: 3px;
     font-size: 14px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-weight: 700;
 }
 
@@ -667,9 +567,9 @@ header {
    ═══════════════════════════════════════════ */
 
 .inactive-clock {
-    background: linear-gradient(135deg, var(--bg-card), var(--bg-hover));
-    border: 2px solid var(--border);
-    border-left: 4px solid var(--success);
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 12px;
     padding: 14px 20px;
     margin-top: 16px;
     text-align: center;
@@ -680,7 +580,7 @@ header {
 .inactive-clock[data-urgency="red"]    { border-left-color: var(--danger); }
 
 .inactive-clock-time {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 32px;
     font-weight: 800;
     color: var(--success);
@@ -696,7 +596,7 @@ header {
     font-size: 11px;
     letter-spacing: 3px;
     text-transform: uppercase;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-weight: 700;
     margin-top: 4px;
 }
@@ -706,16 +606,16 @@ header {
    ═══════════════════════════════════════════ */
 
 .stopwatch-panel {
-    background: linear-gradient(135deg, var(--bg-card), var(--bg-hover));
-    border: 2px solid var(--border);
-    border-top: 3px solid var(--warning);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
     padding: 28px 40px;
     text-align: center;
     margin-top: 16px;
 }
 
 .stopwatch-display {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 64px;
     font-weight: 800;
     color: var(--warning);
@@ -735,27 +635,24 @@ header {
 }
 
 .stat-card {
-    background: linear-gradient(135deg, var(--bg-card), var(--bg-hover));
-    border: 2px solid var(--border);
-    border-radius: 0;
-    padding: 32px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
     text-align: center;
-    border-top: 4px solid var(--primary);
-    transition: all 0.3s;
+    transition: background 0.15s;
 }
 
 .stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    background: var(--bg-hover);
 }
 
 .stat-value {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 48px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    font-size: 42px;
     font-weight: 800;
-    color: var(--primary);
-    margin-bottom: 8px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    color: var(--text-primary);
+    margin-bottom: 6px;
 }
 
 .stat-label {
@@ -763,17 +660,16 @@ header {
     text-transform: uppercase;
     letter-spacing: 2px;
     font-size: 11px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-weight: 700;
 }
 
 .chart-container {
     background: var(--bg-card);
-    border: 2px solid var(--border);
-    border-radius: 0;
-    padding: 32px;
-    margin-bottom: 32px;
-    border-left: 4px solid var(--primary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
 }
 
 .chart-header {
@@ -781,7 +677,7 @@ header {
 }
 
 .chart-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 28px;
     font-weight: 800;
     text-transform: uppercase;
@@ -798,7 +694,7 @@ header {
 
 .form-label {
     display: block;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 13px;
     font-weight: 700;
     text-transform: uppercase;
@@ -810,21 +706,21 @@ header {
 .form-input,
 select.form-input {
     width: 100%;
-    background: var(--bg-primary);
-    border: 2px solid var(--border);
+    background: transparent;
+    border: 1px solid var(--border);
     color: var(--text-primary);
-    padding: 14px;
+    padding: 12px 14px;
     font-size: 15px;
-    border-radius: 0;
-    font-family: 'Work Sans', sans-serif;
-    transition: all 0.2s;
+    border-radius: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    transition: border-color 0.15s;
 }
 
 .form-input:focus,
 select.form-input:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.1);
+    box-shadow: 0 0 0 2px rgba(29, 155, 240, 0.2);
 }
 
 /* ═══════════════════════════════════════════
@@ -848,25 +744,25 @@ select.form-input:focus {
 }
 
 .modal-content {
-    background: var(--bg-card);
-    border: 3px solid var(--primary);
-    border-radius: 0;
-    padding: 40px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px;
     max-width: 600px;
     width: 92%;
-    max-height: 85vh;
+    max-height: 88vh;
     overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
 }
 
 .modal-header {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 32px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    font-size: 24px;
     font-weight: 800;
     text-transform: uppercase;
-    margin-bottom: 28px;
-    letter-spacing: 2px;
-    color: var(--primary);
+    margin-bottom: 24px;
+    letter-spacing: 0;
+    color: var(--text-primary);
 }
 
 /* ═══════════════════════════════════════════
@@ -877,16 +773,16 @@ select.form-input:focus {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 16px 20px;
+    padding: 14px 18px;
     background: var(--bg-hover);
-    border: 2px solid var(--border);
-    border-radius: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background 0.15s;
 }
 
 .theme-toggle:hover {
-    border-color: var(--primary);
+    background: var(--bg-card);
 }
 
 .toggle-switch {
@@ -924,11 +820,10 @@ select.form-input:focus {
 
 .day-container {
     background: var(--bg-hover);
-    border: 2px solid var(--border);
-    border-radius: 0;
-    padding: 24px;
-    margin-bottom: 24px;
-    border-left: 4px solid var(--accent);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
 }
 
 .day-header {
@@ -941,15 +836,15 @@ select.form-input:focus {
 .day-name-input {
     font-weight: 700;
     font-size: 16px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     text-transform: uppercase;
 }
 
 .exercise-builder-item {
     background: var(--bg-primary);
-    border: 2px solid var(--border);
-    border-radius: 0;
-    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
     margin-bottom: 12px;
     display: flex;
     gap: 12px;
@@ -966,24 +861,21 @@ select.form-input:focus {
 
 .exercise-result-item {
     background: var(--bg-hover);
-    border: 2px solid var(--border);
-    border-radius: 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
     padding: 14px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     cursor: pointer;
-    transition: all 0.2s;
-    border-left: 3px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
 }
 
 .exercise-result-item:hover {
-    border-left-color: var(--primary);
     border-color: var(--primary);
-    transform: translateX(4px);
     background: var(--bg-card);
 }
 
 .exercise-result-item:active {
-    transform: scale(0.98);
+    opacity: 0.85;
 }
 
 /* ═══════════════════════════════════════════
@@ -1001,17 +893,15 @@ select.form-input:focus {
     position: relative;
     aspect-ratio: 1;
     background: var(--bg-hover);
-    border: 2px solid var(--border);
-    border-radius: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
     overflow: hidden;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: border-color 0.15s;
 }
 
 .photo-item:hover {
-    transform: scale(1.05);
     border-color: var(--primary);
-    box-shadow: 0 8px 24px rgba(196, 30, 58, 0.4);
 }
 
 .photo-item img {
@@ -1030,7 +920,7 @@ select.form-input:focus {
     padding: 6px;
     font-size: 11px;
     text-align: center;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-weight: 700;
     text-transform: uppercase;
 }
@@ -1073,8 +963,7 @@ select.form-input:focus {
     height: 100%;
     border-radius: 50%;
     object-fit: cover;
-    border: 4px solid var(--primary);
-    box-shadow: 0 8px 24px rgba(196, 30, 58, 0.4);
+    border: 3px solid var(--border);
 }
 
 .profile-photo-upload {
@@ -1131,16 +1020,16 @@ select.form-input:focus {
 
 .pr-exercise {
     font-weight: 600;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
 
 .pr-value {
-    color: var(--primary);
-    font-family: 'Barlow Condensed', sans-serif;
-    font-size: 22px;
-    font-weight: 800;
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
 }
 
 .history-row {
@@ -1169,13 +1058,12 @@ select.form-input:focus {
     background: var(--bg-primary);
     border: 1px solid var(--border);
     color: var(--text-secondary);
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    padding: 3px 6px;
-    border-radius: 0;
+    padding: 3px 8px;
+    border-radius: 6px;
     cursor: pointer;
 }
 
@@ -1189,7 +1077,7 @@ select.form-input:focus {
     color: var(--text-secondary);
     font-size: 12px;
     margin-bottom: 6px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     text-transform: uppercase;
     letter-spacing: 1px;
 }
@@ -1211,18 +1099,18 @@ select.form-input:focus {
 .install-banner {
     display: none;
     position: fixed;
-    bottom: 24px;
+    bottom: 88px;
     left: 50%;
     transform: translateX(-50%);
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    border-radius: 0;
+    background: var(--bg-secondary);
+    border-radius: 16px;
     padding: 20px 24px;
-    box-shadow: 0 10px 40px rgba(196, 30, 58, 0.6);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
     z-index: 200;
     max-width: 520px;
     width: 90%;
     animation: slideUp 0.5s ease;
-    border: 2px solid var(--primary-light);
+    border: 1px solid var(--border);
 }
 
 .install-banner.show {
@@ -1256,7 +1144,7 @@ select.form-input:focus {
 }
 
 .install-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 18px;
     font-weight: 800;
     text-transform: uppercase;
@@ -1270,11 +1158,11 @@ select.form-input:focus {
 
 .btn-close {
     position: absolute;
-    top: -12px;
-    right: -12px;
-    background: rgba(0, 0, 0, 0.6);
-    border: 2px solid var(--primary-light);
-    color: #fff;
+    top: -10px;
+    right: -10px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
     width: 32px;
     height: 32px;
     border-radius: 50%;
@@ -1284,12 +1172,11 @@ select.form-input:focus {
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    transition: all 0.2s;
+    transition: background 0.15s;
 }
 
 .btn-close:hover {
-    background: var(--primary);
-    transform: scale(1.1);
+    background: var(--bg-card);
 }
 
 /* ═══════════════════════════════════════════
@@ -1309,18 +1196,17 @@ select.form-input:focus {
 /* Plan card */
 .community-plan-card {
     background: var(--bg-card);
-    border: 2px solid var(--border);
-    border-left: 4px solid var(--primary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
     padding: 20px;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    transition: border-color 0.2s, transform 0.15s;
+    transition: background 0.15s, border-color 0.15s;
 }
 
 .community-plan-card:hover {
-    transform: translateY(-2px);
-    border-color: var(--primary-light);
+    background: var(--bg-hover);
 }
 
 /* Card inner top row */
@@ -1332,7 +1218,7 @@ select.form-input:focus {
 }
 
 .cpc-name {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 22px;
     font-weight: 800;
     text-transform: uppercase;
@@ -1353,11 +1239,11 @@ select.form-input:focus {
 .cpc-fork-badge {
     background: var(--bg-hover);
     color: var(--text-muted);
-    padding: 2px 8px;
+    padding: 2px 10px;
     font-size: 10px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-weight: 700;
-    letter-spacing: 1px;
+    border-radius: 9999px;
 }
 
 .cpc-desc {
@@ -1379,10 +1265,11 @@ select.form-input:focus {
     color: var(--text-secondary);
     padding: 3px 10px;
     font-size: 11px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    border-left: 3px solid var(--accent);
+    letter-spacing: 0.5px;
+    border-radius: 9999px;
+    border: 1px solid var(--border);
 }
 
 /* Stats row */
@@ -1400,7 +1287,7 @@ select.form-input:focus {
 }
 
 .cpc-stat-val {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 28px;
     font-weight: 900;
     line-height: 1;
@@ -1412,7 +1299,7 @@ select.form-input:focus {
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 1px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
 }
 
 /* Card actions */
@@ -1428,18 +1315,20 @@ select.form-input:focus {
     padding: 4px 12px;
     font-size: 11px;
     font-weight: 700;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     white-space: nowrap;
     flex-shrink: 0;
+    border-radius: 9999px;
 }
 
 /* Community plan detail modal chips */
 .cpd-meta-chip {
     background: var(--bg-hover);
     padding: 8px 16px;
-    border-left: 3px solid var(--primary);
+    border-radius: 10px;
+    border: 1px solid var(--border);
 }
 
 .cpd-chip-label {
@@ -1447,13 +1336,13 @@ select.form-input:focus {
     color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 1px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     margin-bottom: 2px;
 }
 
 .cpd-chip-value {
     font-weight: 700;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     text-transform: uppercase;
     font-size: 16px;
 }
@@ -1461,8 +1350,9 @@ select.form-input:focus {
 /* ── Success Wall ─────────────────────────── */
 .success-wall {
     background: var(--bg-card);
-    border: 2px solid var(--border);
-    border-top: 4px solid var(--success);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
 }
 
 .success-wall-header {
@@ -1475,7 +1365,7 @@ select.form-input:focus {
 }
 
 .success-wall-title {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 18px;
     font-weight: 800;
     text-transform: uppercase;
@@ -1528,7 +1418,7 @@ select.form-input:focus {
 .sw-name {
     color: var(--text-primary);
     font-weight: 700;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     text-transform: uppercase;
     font-size: 14px;
 }
@@ -1536,7 +1426,7 @@ select.form-input:focus {
 .sw-weight {
     color: var(--primary);
     font-weight: 700;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 15px;
 }
 
@@ -1556,22 +1446,22 @@ select.form-input:focus {
 .sw-time {
     font-size: 11px;
     color: var(--text-muted);
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     letter-spacing: 1px;
 }
 
 .sw-kudos-btn {
     background: none;
     border: 1px solid var(--border);
+    border-radius: 9999px;
     color: var(--text-secondary);
-    padding: 3px 10px;
+    padding: 3px 12px;
     font-size: 11px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: border-color 0.15s, color 0.15s;
 }
 
 .sw-kudos-btn:hover {
@@ -1612,7 +1502,7 @@ select.form-input:focus {
     border-bottom: 3px solid transparent;
     margin-bottom: -2px;
     padding: 10px 20px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 16px;
     font-weight: 700;
     text-transform: uppercase;
@@ -1640,20 +1530,21 @@ select.form-input:focus {
     gap: 6px;
     background: var(--bg-hover);
     border: 1px solid var(--border);
+    border-radius: 9999px;
     padding: 6px 14px;
     font-size: 18px;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: border-color 0.15s, background 0.15s;
 }
 .reaction-btn span {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 14px;
     font-weight: 700;
     color: var(--text-secondary);
 }
-.reaction-btn:hover { border-color: var(--primary); transform: scale(1.08); }
-.reaction-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
-.reaction-btn.active span { color: #fff; }
+.reaction-btn:hover { border-color: var(--primary); }
+.reaction-btn.active { background: rgba(29, 155, 240, 0.15); border-color: var(--primary); color: var(--primary); }
+.reaction-btn.active span { color: var(--primary); }
 
 /* ── Comments / Replies ───────────────────── */
 .comments-section { border: 1px solid var(--border); }
@@ -1664,7 +1555,7 @@ select.form-input:focus {
     gap: 10px;
     padding: 10px 14px;
     background: var(--bg-hover);
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 16px;
     font-weight: 700;
     text-transform: uppercase;
@@ -1677,8 +1568,9 @@ select.form-input:focus {
     color: #fff;
     padding: 1px 8px;
     font-size: 12px;
-    font-weight: 800;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    border-radius: 9999px;
 }
 
 .comments-feed {
@@ -1700,7 +1592,7 @@ select.form-input:focus {
     margin-bottom: 4px;
 }
 .comment-author {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 13px;
     font-weight: 700;
     text-transform: uppercase;
@@ -1709,7 +1601,7 @@ select.form-input:focus {
 .comment-time {
     font-size: 11px;
     color: var(--text-muted);
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     letter-spacing: 1px;
 }
 .comment-delete-btn {
@@ -1738,7 +1630,7 @@ select.form-input:focus {
     text-align: center;
     text-transform: uppercase;
     letter-spacing: 1px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
 }
 .comment-input-row {
     display: flex;
@@ -1753,15 +1645,14 @@ select.form-input:focus {
 .forum-post-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-left: 4px solid var(--border);
-    padding: 16px;
-    margin-bottom: 12px;
+    border-radius: 16px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
     cursor: pointer;
-    transition: border-color 0.2s, transform 0.15s;
+    transition: background 0.15s;
 }
 .forum-post-card:hover {
-    border-left-color: var(--primary);
-    transform: translateY(-1px);
+    background: var(--bg-hover);
 }
 
 .forum-post-top {
@@ -1772,7 +1663,7 @@ select.form-input:focus {
     flex-wrap: wrap;
 }
 .forum-post-author {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 13px;
     font-weight: 700;
     color: var(--text-secondary);
@@ -1781,7 +1672,7 @@ select.form-input:focus {
 .forum-post-time {
     font-size: 11px;
     color: var(--text-muted);
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     margin-left: auto;
 }
 .forum-post-preview {
@@ -1800,7 +1691,7 @@ select.form-input:focus {
     gap: 16px;
 }
 .forum-stat {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 13px;
     font-weight: 700;
     color: var(--text-muted);
@@ -1811,7 +1702,7 @@ select.form-input:focus {
 .forum-delete-link {
     margin-left: auto;
     font-size: 11px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     letter-spacing: 1px;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -1827,12 +1718,13 @@ select.form-input:focus {
     gap: 4px;
     padding: 3px 10px;
     font-size: 11px;
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     color: #fff;
     flex-shrink: 0;
+    border-radius: 9999px;
 }
 .cat-supplements { background: #7c3aed; }
 .cat-nutrition   { background: #059669; }
@@ -1844,19 +1736,20 @@ select.form-input:focus {
 .like-btn {
     background: var(--bg-hover);
     border: 1px solid var(--border);
-    padding: 6px 16px;
-    font-family: 'Barlow Condensed', sans-serif;
+    border-radius: 9999px;
+    padding: 6px 18px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 14px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.3px;
     cursor: pointer;
-    transition: all 0.15s;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 .like-btn:hover, .like-btn.liked {
-    background: #e05c6f;
-    border-color: #e05c6f;
-    color: #fff;
+    background: rgba(249, 24, 128, 0.12);
+    border-color: #f91880;
+    color: #f91880;
 }
 
 /* ── Responsive adjustments ───────────────── */
@@ -1874,17 +1767,12 @@ select.form-input:focus {
    ═══════════════════════════════════════════ */
 
 @media (max-width: 768px) {
-    .nav-tab {
-        padding: 10px 16px;
-        font-size: 12px;
-    }
-
     .hero-workout {
-        padding: 32px 24px;
+        padding: 24px 20px;
     }
 
     .hero-workout h2 {
-        font-size: 36px;
+        font-size: 28px;
     }
 
     .workout-plans-grid {
@@ -1895,54 +1783,94 @@ select.form-input:focus {
         grid-template-columns: repeat(2, 1fr);
     }
 
-    .logo {
-        font-size: 28px;
-    }
-
     .timer-display {
         font-size: 56px;
     }
 
     .stat-value {
-        font-size: 36px;
+        font-size: 32px;
     }
 
     .photo-grid {
         grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     }
+
+    /* ── Bottom navigation bar on mobile ── */
+    .header-content {
+        justify-content: center;
+        padding: 0 16px;
+    }
+
+    /* Logo only in top bar on mobile */
+    .logo {
+        padding: 14px 0;
+        font-size: 18px;
+    }
+
+    /* Nav moves to a fixed bottom bar */
+    .nav-tabs {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 200;
+        background: rgba(0, 0, 0, 0.96);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: space-around;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        gap: 0;
+    }
+
+    .nav-tab {
+        flex: 1;
+        padding: 12px 4px 10px;
+        font-size: 9px;
+        border-bottom: none;
+        border-top: 2px solid transparent;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 72px;
+    }
+
+    .nav-tab.active {
+        border-top-color: var(--primary);
+        border-bottom: none;
+        color: var(--primary);
+    }
+
+    /* Add bottom padding to main content so it isn't hidden under the nav */
+    .container {
+        padding-bottom: 72px;
+    }
 }
 
 @media (max-width: 480px) {
     .auth-container {
-        padding: 32px 24px;
-    }
-
-    .modal-content {
         padding: 28px 20px;
     }
 
-    .header-content {
-        flex-direction: column;
-        gap: 16px;
-    }
-
-    .nav-tabs {
+    .modal-content {
+        padding: 24px 18px;
+        border-radius: 16px 16px 0 0;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
         width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;   /* Firefox */
-        flex-wrap: nowrap;
-        justify-content: flex-start;
-        gap: 2px;
+        max-width: 100%;
+        max-height: 90vh;
+        margin: 0;
     }
 
-    .nav-tabs::-webkit-scrollbar { display: none; }  /* Chrome / Safari */
-
-    .nav-tab {
-        flex: 0 0 auto;        /* don't shrink — let the row scroll instead */
-        white-space: nowrap;
-        padding: 10px 14px;
-        font-size: 12px;
+    .modal {
+        align-items: flex-end;
     }
 
     .rest-timer {
