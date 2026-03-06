@@ -432,6 +432,53 @@ header {
     opacity: 0.5;
 }
 
+/* Effort rating */
+.exercise-all-done {
+    border-color: var(--success) !important;
+}
+
+.effort-prompt {
+    border-top: 1px solid var(--border);
+    margin-top: 12px;
+    padding-top: 14px;
+}
+
+.effort-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.effort-btn {
+    flex: 1 1 auto;
+    min-width: 120px;
+    padding: 10px 8px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: transform 0.1s, opacity 0.1s;
+}
+
+.effort-btn:active {
+    transform: scale(0.96);
+    opacity: 0.85;
+}
+
+.effort-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1px;
+}
+
 .set-number {
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 11px;

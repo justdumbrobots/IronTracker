@@ -89,6 +89,15 @@ let activeCommunityPane = 'plans';   // Remembered across main-nav tab switches
 const ADMIN_EMAIL = 'justdumbrobots@gmail.com';
 let adminActivePane = 'users';
 let adminActivityData = [];
+
+// Effort rating scale
+const EFFORT_RATINGS = [
+    { key: 'recovery',    label: 'RECOVERY PACE', color: '#4fc3f7', textColor: '#000', adj: +0.10, adjLabel: 'TRY +10%' },
+    { key: 'comfortable', label: 'COMFORTABLE',   color: '#81c784', textColor: '#000', adj: +0.05, adjLabel: 'TRY +5%'  },
+    { key: 'challenging', label: 'CHALLENGING',   color: '#ffb74d', textColor: '#000', adj:  0,    adjLabel: 'HOLD'      },
+    { key: 'gritty',      label: 'GRITTY',        color: '#ff8a65', textColor: '#000', adj:  0,    adjLabel: 'HOLD'      },
+    { key: 'failure',     label: 'FAILURE',        color: '#e57373', textColor: '#fff', adj: -0.10, adjLabel: 'DROP -10%' },
+];
 function isAdmin() { return currentUser?.email === ADMIN_EMAIL; }
 
 // ═════════════════════════════════════════════
@@ -1237,16 +1246,21 @@ function renderActiveWorkout() {
     const container = document.getElementById('exercise-container');
     container.innerHTML = currentWorkout.exercises.map((ex, exIndex) => {
         const lastPerf = getLastPerformance(ex.name);
+        const lastEffort = getLastEffortRating(ex.name);
         const wUnit = ex.weightUnit || 'lbs';
         const rUnit = ex.repUnit || 'reps';
         const wPlaceholder = wUnit === 'miles' ? 'MI' : 'LBS';
         const rPlaceholder = rUnit === 'time' ? 'SECS' : 'REPS';
+        const allDone = ex.sets.length > 0 && ex.sets.every(s => s.completed || s.skipped);
+        const hasCompleted = ex.sets.some(s => s.completed);
+        const currentRating = ex.effortRating ? EFFORT_RATINGS.find(r => r.key === ex.effortRating) : null;
         return `
-            <div class="exercise-item">
+            <div class="exercise-item${allDone && hasCompleted ? ' exercise-all-done' : ''}">
                 <div class="exercise-header">
                     <div class="exercise-name">${escapeHtml(ex.name)}</div>
                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                         ${lastPerf ? `<div class="last-performance">LAST: ${escapeHtml(lastPerf)}</div>` : '<div class="last-performance">FIRST TIME!</div>'}
+                        ${lastEffort ? `<div class="last-performance" style="background:${lastEffort.color}20; color:${lastEffort.color}; border-color:${lastEffort.color}40;">${lastEffort.label} · ${lastEffort.adjLabel}</div>` : ''}
                         <select class="unit-select" data-ex="${exIndex}" data-field="weightUnit">
                             <option value="lbs" ${wUnit !== 'miles' ? 'selected' : ''}>LBS</option>
                             <option value="miles" ${wUnit === 'miles' ? 'selected' : ''}>MILES</option>
@@ -1286,8 +1300,28 @@ function renderActiveWorkout() {
                             }`}
                         </div>
                     `).join('')}
-                    <button class="add-set-btn" data-ex="${exIndex}" style="width:100%; margin-top:4px; padding:10px; background:transparent; border:1px dashed var(--border); color:var(--text-secondary); border-radius:8px; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:1px; font-size:13px;">+ ADD SET</button>
+                    ${!allDone ? `<button class="add-set-btn" data-ex="${exIndex}" style="width:100%; margin-top:4px; padding:10px; background:transparent; border:1px dashed var(--border); color:var(--text-secondary); border-radius:8px; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:1px; font-size:13px;">+ ADD SET</button>` : ''}
                 </div>
+                ${allDone && hasCompleted ? `
+                <div class="effort-prompt">
+                    ${currentRating ? `
+                        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                            <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; letter-spacing:1px; color:var(--text-secondary);">HOW DID THAT FEEL?</div>
+                            <div class="effort-badge" style="background:${currentRating.color}; color:${currentRating.textColor};">${currentRating.label}</div>
+                            <button class="effort-change-btn" data-ex="${exIndex}" style="font-size:11px; padding:2px 8px; background:transparent; border:1px solid var(--border); color:var(--text-secondary); border-radius:6px; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-weight:700;">CHANGE</button>
+                        </div>
+                    ` : `
+                        <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; letter-spacing:1px; color:var(--text-secondary); margin-bottom:10px;">HOW DID THAT FEEL?</div>
+                        <div class="effort-buttons">
+                            ${EFFORT_RATINGS.map(r => `
+                                <button class="effort-btn" data-ex="${exIndex}" data-rating="${r.key}"
+                                    style="background:${r.color}; color:${r.textColor};">
+                                    ${r.label}
+                                </button>
+                            `).join('')}
+                        </div>
+                    `}
+                </div>` : ''}
             </div>
         `;
     }).join('');
@@ -1335,6 +1369,20 @@ function renderActiveWorkout() {
         btn.addEventListener('click', () => {
             const ex = parseInt(btn.dataset.ex);
             currentWorkout.exercises[ex].sets.push({ weight: '', reps: '', completed: false });
+            renderActiveWorkout();
+        });
+    });
+    container.querySelectorAll('.effort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const ex = parseInt(btn.dataset.ex);
+            currentWorkout.exercises[ex].effortRating = btn.dataset.rating;
+            renderActiveWorkout();
+        });
+    });
+    container.querySelectorAll('.effort-change-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const ex = parseInt(btn.dataset.ex);
+            delete currentWorkout.exercises[ex].effortRating;
             renderActiveWorkout();
         });
     });
@@ -1389,15 +1437,33 @@ function finishWorkout() {
 }
 
 function getLastPerformance(exerciseName) {
-    const sets = getLastRawSets(exerciseName);
-    if (!sets) return null;
-    return sets.filter(s => s.completed).map(s => `${s.weight}×${s.reps}`).join(', ');
+    for (const workout of workoutHistory) {
+        const ex = workout.exercises.find(e => e.name === exerciseName);
+        if (!ex) continue;
+        const done = ex.sets.filter(s => s.completed);
+        if (!done.length) continue;
+        const setsStr = done.map(s => `${s.weight}×${s.reps}`).join(', ');
+        if (ex.effortRating) {
+            const rating = EFFORT_RATINGS.find(r => r.key === ex.effortRating);
+            return rating ? `${setsStr} · ${rating.label} · ${rating.adjLabel}` : setsStr;
+        }
+        return setsStr;
+    }
+    return null;
 }
 
 function getLastRawSets(exerciseName) {
     for (const workout of workoutHistory) {
         const ex = workout.exercises.find(e => e.name === exerciseName);
         if (ex) return ex.sets;
+    }
+    return null;
+}
+
+function getLastEffortRating(exerciseName) {
+    for (const workout of workoutHistory) {
+        const ex = workout.exercises.find(e => e.name === exerciseName);
+        if (ex?.effortRating) return EFFORT_RATINGS.find(r => r.key === ex.effortRating) || null;
     }
     return null;
 }
