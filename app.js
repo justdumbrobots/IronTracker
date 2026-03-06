@@ -3195,6 +3195,10 @@ window.deletePlanComment = deletePlanComment;
 window.showPostDetail    = showPostDetail;
 window.deleteReply       = deleteReply;
 window.deleteForumPost   = deleteForumPost;
+window.adminDeleteForumPost = adminDeleteForumPost;
+window.adminDeleteCommunityPlan = adminDeleteCommunityPlan;
+window.exportAdminActivityCSV = exportAdminActivityCSV;
+window.loadAdminActivity = loadAdminActivity;
 
 // ═════════════════════════════════════════════
 // EVENT LISTENERS
