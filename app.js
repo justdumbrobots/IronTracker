@@ -2055,7 +2055,7 @@ function showWorkoutDetail(index) {
                 <div style="font-weight: 700; font-family: 'Barlow Condensed', sans-serif;">${duration}</div>
             </div>` : ''}
         </div>
-        <div style="max-height: 420px; overflow-y: auto;">
+        <div>
             ${w.exercises.map(ex => {
                 const wUnit = ex.weightUnit === 'miles' ? 'MI' : 'LBS';
                 const rUnit = ex.repUnit === 'time' ? 'S' : 'REPS';
@@ -2076,7 +2076,9 @@ function showWorkoutDetail(index) {
         </div>
     `;
     document.getElementById('wdm-edit-btn').onclick = () => editWorkoutEntry(index);
-    document.getElementById('workout-detail-modal').classList.add('active');
+    const wdModal = document.getElementById('workout-detail-modal');
+    wdModal.classList.add('active');
+    wdModal.querySelector('.modal-content').scrollTop = 0;
 }
 
 function editWorkoutEntry(index) {

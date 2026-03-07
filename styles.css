@@ -175,18 +175,24 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: stretch;
+    position: relative;
 }
 
 .logo {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     display: flex;
     align-items: center;
-    padding: 0 16px;
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
     font-size: 20px;
     font-weight: 800;
     letter-spacing: -0.3px;
     color: var(--text-primary);
     text-transform: uppercase;
+    white-space: nowrap;
+    pointer-events: none;
 }
 
 .nav-tabs {
@@ -1856,12 +1862,11 @@ select.form-input:focus {
     /* ── Bottom navigation bar on mobile ── */
     .header-content {
         justify-content: center;
-        padding: 0 16px;
+        min-height: 50px;
     }
 
-    /* Logo only in top bar on mobile */
+    /* Logo centered in top bar on mobile */
     .logo {
-        padding: 14px 0;
         font-size: 18px;
     }
 
