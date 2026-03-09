@@ -608,7 +608,8 @@ async function showTrainerDirectory() {
         const snap = await getDocs(q);
         const trainers = snap.docs
             .map(d => ({ uid: d.id, ...d.data() }))
-            .filter(t => t.trainerProfile?.listedInDirectory);
+            // Show trainers who are listed, or who have no trainerProfile yet (migrated accounts)
+            .filter(t => t.trainerProfile ? t.trainerProfile.listedInDirectory : true);
 
         if (trainers.length === 0) {
             container.innerHTML = `

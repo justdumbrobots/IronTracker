@@ -206,7 +206,7 @@ async function loadUserRole() {
         window.currentUserName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete';
         // Show/hide role-specific nav tabs
         document.getElementById('trainer-nav-tab').style.display = userRole === 'trainer' ? '' : 'none';
-        document.getElementById('messages-nav-tab').style.display = '';
+        document.getElementById('messages-nav-tab').style.display = (userRole === 'trainer' || userTrainerId) ? '' : 'none';
         // Boot role-specific module
         if (typeof window.initTrainer === 'function') window.initTrainer();
         if (typeof window.initMessaging === 'function') window.initMessaging();
@@ -259,7 +259,7 @@ async function handleRoleSelect(role) {
         await initializeUserData(uid);
         const trainerProfile = role === 'trainer' ? {
             bio: '', specialties: [], location: '',
-            listedInDirectory: false, acceptingClients: true
+            listedInDirectory: true, acceptingClients: true
         } : null;
         await setDoc(doc(db, 'users', uid), {
             role,
