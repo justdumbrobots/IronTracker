@@ -1932,6 +1932,13 @@ select.form-input:focus {
         margin: 0;
     }
 
+    #workout-detail-modal .modal-content,
+    #athlete-workout-modal .modal-content {
+        min-height: 75vh;
+        display: flex;
+        flex-direction: column;
+    }
+
     .modal {
         align-items: flex-end;
     }
