@@ -206,7 +206,7 @@ async function loadUserRole() {
         window.currentUserName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete';
         // Show/hide role-specific nav tabs
         document.getElementById('trainer-nav-tab').style.display = userRole === 'trainer' ? '' : 'none';
-        document.getElementById('messages-nav-tab').style.display = '';
+        document.getElementById('messages-nav-tab').style.display = (userRole === 'trainer' || userTrainerId) ? '' : 'none';
         // Boot role-specific module
         if (typeof window.initTrainer === 'function') window.initTrainer();
         if (typeof window.initMessaging === 'function') window.initMessaging();
@@ -259,7 +259,7 @@ async function handleRoleSelect(role) {
         await initializeUserData(uid);
         const trainerProfile = role === 'trainer' ? {
             bio: '', specialties: [], location: '',
-            listedInDirectory: false, acceptingClients: true
+            listedInDirectory: true, acceptingClients: true
         } : null;
         await setDoc(doc(db, 'users', uid), {
             role,
@@ -2055,7 +2055,7 @@ function showWorkoutDetail(index) {
                 <div style="font-weight: 700; font-family: 'Barlow Condensed', sans-serif;">${duration}</div>
             </div>` : ''}
         </div>
-        <div style="max-height: 420px; overflow-y: auto;">
+        <div>
             ${w.exercises.map(ex => {
                 const wUnit = ex.weightUnit === 'miles' ? 'MI' : 'LBS';
                 const rUnit = ex.repUnit === 'time' ? 'S' : 'REPS';
@@ -2076,7 +2076,9 @@ function showWorkoutDetail(index) {
         </div>
     `;
     document.getElementById('wdm-edit-btn').onclick = () => editWorkoutEntry(index);
-    document.getElementById('workout-detail-modal').classList.add('active');
+    const wdModal = document.getElementById('workout-detail-modal');
+    wdModal.classList.add('active');
+    wdModal.querySelector('.modal-content').scrollTop = 0;
 }
 
 function editWorkoutEntry(index) {
