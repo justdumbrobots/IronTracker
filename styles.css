@@ -1946,12 +1946,14 @@ select.form-input:focus {
     /* ── Bottom navigation bar on mobile ── */
     .header-content {
         justify-content: center;
-        min-height: 50px;
+        align-items: center;
+        min-height: 56px;
     }
 
     /* Logo centered in top bar on mobile */
-    .logo {
-        font-size: 18px;
+    header .logo {
+        font-size: 22px;
+        padding: 0 16px;
     }
 
     /* Nav moves to a fixed bottom bar */
