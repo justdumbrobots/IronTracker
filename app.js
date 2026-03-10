@@ -207,13 +207,9 @@ async function loadUserRole() {
         // Show/hide role-specific nav tabs
         document.getElementById('trainer-nav-tab').style.display = userRole === 'trainer' ? '' : 'none';
         document.getElementById('messages-nav-tab').style.display = (userRole === 'trainer' || userTrainerId) ? '' : 'none';
-        // Boot role-specific module
+        // Boot role-specific module (initTrainer also populates the coaching panel)
         if (typeof window.initTrainer === 'function') window.initTrainer();
         if (typeof window.initMessaging === 'function') window.initMessaging();
-        // Show coaching panel on profile for athletes
-        if (typeof window.loadCoachingPanel === 'function' && userRole === 'athlete') {
-            window.loadCoachingPanel();
-        }
     } catch(e) { console.error('loadUserRole error:', e); }
 }
 
