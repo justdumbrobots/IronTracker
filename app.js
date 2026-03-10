@@ -152,7 +152,7 @@ onAuthStateChanged(auth, async (user) => {
             const wdSnap = await getDoc(doc(db, 'users', user.uid, 'data', 'workout_data'));
             if (!wdSnap.exists()) {
                 pendingRoleUid = user.uid;
-                document.getElementById('loading-screen').style.display = 'none';
+                hideLoadingScreen();
                 document.getElementById('auth-screen').style.display = 'none';
                 document.getElementById('role-selection-screen').style.display = 'flex';
             } else {
@@ -163,17 +163,30 @@ onAuthStateChanged(auth, async (user) => {
             currentUser = null;
             showAuthScreen();
         }
-    }, 1000);
+    }, 2900); // wait for ECG splash (0.35s delay + 2.1s draw + 0.35s fade-out = 2.8s)
 });
 
+let _splashDone = false;
+function hideLoadingScreen() {
+    const screen = document.getElementById('loading-screen');
+    if (!screen) return;
+    screen.style.display = 'none';
+    if (!_splashDone) {
+        _splashDone = true;
+        // Switch to lightweight spinner for any future shows (e.g. role-selection → app)
+        screen.classList.add('spinner-only');
+        screen.innerHTML = '<div class="loading-content"><div class="loading-spinner"></div></div>';
+    }
+}
+
 function showAuthScreen() {
-    document.getElementById('loading-screen').style.display = 'none';
+    hideLoadingScreen();
     document.getElementById('auth-screen').style.display = 'flex';
     document.getElementById('main-app').style.display = 'none';
 }
 
 function showMainApp() {
-    document.getElementById('loading-screen').style.display = 'none';
+    hideLoadingScreen();
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('main-app').style.display = 'block';
     document.getElementById('admin-nav-tab').style.display = isAdmin() ? '' : 'none';

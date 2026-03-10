@@ -18,13 +18,27 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Loading Screen -->
+    <!-- Splash / Loading Screen -->
     <div id="loading-screen" class="loading-screen">
-        <div class="loading-content">
-            <div class="logo" style="font-size: 48px; margin-bottom: 20px;">IRON<span style="color:var(--primary)">SYNC</span>IQ</div>
-            <div class="loading-spinner"></div>
-            <p style="color: var(--text-secondary); margin-top: 20px;">LOADING...</p>
+        <div class="splash-logo-wrap">
+            <div class="logo" style="font-size: 52px;">IRON<span style="color:#CC2428">SYNC</span>IQ</div>
+            <p class="splash-tagline">TRACK YOUR LIFTS</p>
         </div>
+        <!-- ECG heartbeat line — full viewport width -->
+        <svg class="ecg-svg" viewBox="0 0 1000 70" preserveAspectRatio="none" aria-hidden="true">
+            <!-- Baseline grid hint (very subtle) -->
+            <line class="ecg-grid" x1="0" y1="35" x2="1000" y2="35"/>
+            <!-- Animated ECG trace: flat → P wave → QRST complex → flat -->
+            <path class="ecg-path" pathLength="1"
+                  d="M 0,35 L 430,35 L 438,31 L 446,35 L 451,40 L 457,3 L 463,62 L 469,35 L 482,35 Q 499,16 516,35 L 1000,35"/>
+            <!-- Glowing leading dot -->
+            <circle class="ecg-dot" r="5">
+                <animate attributeName="opacity" values="0;1" dur="0.01s" begin="0.35s" fill="freeze"/>
+                <animate attributeName="opacity" values="1;0" dur="0.15s" begin="2.4s" fill="freeze"/>
+                <animateMotion dur="2.1s" begin="0.35s" fill="freeze" calcMode="linear"
+                    path="M 0,35 L 430,35 L 438,31 L 446,35 L 451,40 L 457,3 L 463,62 L 469,35 L 482,35 Q 499,16 516,35 L 1000,35"/>
+            </circle>
+        </svg>
     </div>
 
     <!-- Role Selection Screen (shown once, after first signup) -->
