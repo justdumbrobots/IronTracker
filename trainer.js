@@ -553,18 +553,56 @@ async function ensureTrainerProfile() {
     } catch(e) { console.error('ensureTrainerProfile error:', e); }
 }
 
-// ─── TRAINER: ATHLETE INVITE SEARCH ───────────────────────────────────────────
-function showAthleteInviteSearch() {
+// ─── TRAINER: COACHING PANEL (profile page) ───────────────────────────────────
+async function showAthleteInviteSearch() {
     const container = el('coaching-panel');
     if (!container) return;
-    container.innerHTML = `
-        <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; color:var(--text-secondary); letter-spacing:1px; margin-bottom:14px;">INVITE AN ATHLETE</div>
-        <div style="display:flex; gap:8px; margin-bottom:16px;">
-            <input type="text" class="form-input" id="athlete-search-input" placeholder="SEARCH BY USERNAME..." style="flex:1;"
-                onkeydown="if(event.key==='Enter') doAthleteSearch()">
-            <button class="btn btn-small" onclick="doAthleteSearch()">SEARCH</button>
-        </div>
-        <div id="athlete-search-results"></div>`;
+    container.innerHTML = '<p style="color:var(--text-secondary); font-size:13px;">LOADING...</p>';
+    try {
+        const snap = await getDoc(doc(db, 'users', getUser().uid));
+        const profile = snap.data()?.trainerProfile || {};
+        const listed = profile.listedInDirectory !== false; // default true
+        const accepting = profile.acceptingClients !== false; // default true
+        container.innerHTML = `
+            <div style="border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:20px; display:flex; flex-direction:column; gap:12px;">
+                <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; gap:12px;">
+                    <div>
+                        <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:1px; font-size:14px;">LISTED IN DIRECTORY</div>
+                        <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">ATHLETES CAN FIND AND REQUEST TO CONNECT WITH YOU</div>
+                    </div>
+                    <input type="checkbox" id="cp-listed" ${listed ? 'checked' : ''} onchange="saveTrainerDirectorySettings()">
+                </label>
+                <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; gap:12px;">
+                    <div>
+                        <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:1px; font-size:14px;">ACCEPTING NEW CLIENTS</div>
+                    </div>
+                    <input type="checkbox" id="cp-accepting" ${accepting ? 'checked' : ''} onchange="saveTrainerDirectorySettings()">
+                </label>
+            </div>
+            <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; color:var(--text-secondary); letter-spacing:1px; margin-bottom:10px;">INVITE AN ATHLETE</div>
+            <div style="display:flex; gap:8px; margin-bottom:16px;">
+                <input type="text" class="form-input" id="athlete-search-input" placeholder="SEARCH BY USERNAME..." style="flex:1;"
+                    onkeydown="if(event.key==='Enter') doAthleteSearch()">
+                <button class="btn btn-small" onclick="doAthleteSearch()">SEARCH</button>
+            </div>
+            <div id="athlete-search-results"></div>`;
+    } catch(e) {
+        container.innerHTML = '<p style="color:var(--error); font-size:13px;">ERROR LOADING</p>';
+        console.error(e);
+    }
+}
+
+async function saveTrainerDirectorySettings() {
+    const listed = el('cp-listed')?.checked ?? true;
+    const accepting = el('cp-accepting')?.checked ?? true;
+    try {
+        const snap = await getDoc(doc(db, 'users', getUser().uid));
+        const existing = snap.data()?.trainerProfile || {};
+        await updateDoc(doc(db, 'users', getUser().uid), {
+            trainerProfile: { ...existing, listedInDirectory: listed, acceptingClients: accepting }
+        });
+        toast(listed ? 'LISTED IN DIRECTORY ✓' : 'REMOVED FROM DIRECTORY', listed ? 'success' : 'info');
+    } catch(e) { toast('ERROR SAVING', 'error'); console.error(e); }
 }
 
 async function doAthleteSearch() {
@@ -902,8 +940,9 @@ window.showTrainerDirectory    = showTrainerDirectory;
 window.filterTrainers          = filterTrainers;
 window.showAssignments         = showAssignments;
 window.submitTrainerComment    = submitTrainerComment;
-window.doAthleteSearch         = doAthleteSearch;
-window.sendAthleteInvite       = sendAthleteInvite;
+window.doAthleteSearch             = doAthleteSearch;
+window.sendAthleteInvite           = sendAthleteInvite;
+window.saveTrainerDirectorySettings = saveTrainerDirectorySettings;
 window.acceptTrainerInvite     = acceptTrainerInvite;
 window.declineTrainerInvite    = declineTrainerInvite;
 window.openAthleteWorkoutDetail= openAthleteWorkoutDetail;

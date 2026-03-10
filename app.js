@@ -6,7 +6,11 @@ import {
     signOut,
     onAuthStateChanged,
     GoogleAuthProvider,
-    signInWithPopup
+    signInWithPopup,
+    deleteUser,
+    EmailAuthProvider,
+    reauthenticateWithCredential,
+    reauthenticateWithPopup
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 import {
     collection,
@@ -317,6 +321,51 @@ async function handleLogout() {
         showToast('LOGGED OUT SUCCESSFULLY');
     } catch (error) {
         alert('LOGOUT FAILED: ' + error.message);
+    }
+}
+
+function showDeleteAccountConfirm() {
+    const section = document.getElementById('delete-account-section');
+    if (!section) return;
+    section.innerHTML = `
+        <div style="border:1px solid var(--error); border-radius:8px; padding:16px; margin-top:16px;">
+            <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; color:var(--error); margin-bottom:8px;">⚠ THIS CANNOT BE UNDONE</div>
+            <div style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">YOUR ACCOUNT, ALL WORKOUT HISTORY, AND DATA WILL BE PERMANENTLY DELETED. TYPE <strong style="color:var(--text-primary);">DELETE</strong> TO CONFIRM.</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <input type="text" class="form-input" id="delete-confirm-input" placeholder="TYPE DELETE TO CONFIRM" style="flex:1; text-transform:uppercase;">
+                <button class="btn btn-small" style="background:var(--error); border-color:var(--error);" onclick="confirmDeleteAccount()">DELETE MY ACCOUNT</button>
+                <button class="btn btn-small btn-secondary" onclick="cancelDeleteAccount()">CANCEL</button>
+            </div>
+        </div>`;
+}
+
+function cancelDeleteAccount() {
+    const section = document.getElementById('delete-account-section');
+    if (section) section.innerHTML = '';
+}
+
+async function confirmDeleteAccount() {
+    const input = document.getElementById('delete-confirm-input');
+    if (!input || input.value.trim().toUpperCase() !== 'DELETE') {
+        showToast('TYPE DELETE TO CONFIRM', 'error'); return;
+    }
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+        // Delete Firestore data first
+        try {
+            await deleteDoc(doc(db, 'users', user.uid, 'data', 'workout_data'));
+        } catch(e) { /* sub-doc may not exist */ }
+        await deleteDoc(doc(db, 'users', user.uid));
+        // Delete Firebase auth account
+        await deleteUser(user);
+        showToast('ACCOUNT DELETED', 'info');
+    } catch(e) {
+        if (e.code === 'auth/requires-recent-login') {
+            showToast('PLEASE SIGN OUT AND SIGN BACK IN, THEN TRY AGAIN', 'error');
+        } else {
+            showToast('DELETE FAILED: ' + e.message, 'error');
+        }
     }
 }
 
@@ -1158,6 +1207,7 @@ function switchView(viewName) {
     if (viewName === 'admin' && isAdmin()) loadAdminView();
     if (viewName === 'trainer' && typeof window.loadTrainerView === 'function') window.loadTrainerView();
     if (viewName === 'messages' && typeof window.loadMessagesView === 'function') window.loadMessagesView();
+    if (viewName === 'profile' && typeof window.loadCoachingPanel === 'function') window.loadCoachingPanel();
 }
 
 function updateWorkoutHero() {
@@ -3372,9 +3422,12 @@ window.adminDeleteForumPost = adminDeleteForumPost;
 window.adminDeleteCommunityPlan = adminDeleteCommunityPlan;
 window.exportAdminActivityCSV = exportAdminActivityCSV;
 window.loadAdminActivity = loadAdminActivity;
-window.handleRoleSelect  = handleRoleSelect;
-window.showToastGlobal   = showToast;
-window.switchView        = switchView;
+window.handleRoleSelect       = handleRoleSelect;
+window.showToastGlobal        = showToast;
+window.switchView             = switchView;
+window.showDeleteAccountConfirm = showDeleteAccountConfirm;
+window.cancelDeleteAccount    = cancelDeleteAccount;
+window.confirmDeleteAccount   = confirmDeleteAccount;
 // Expose workout plans for trainer plan assignment picker
 Object.defineProperty(window, 'myWorkoutPlans', { get: () => workoutPlans });
 Object.defineProperty(window, 'myWorkoutHistory', { get: () => workoutHistory });

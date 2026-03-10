@@ -562,6 +562,14 @@
                         <span id="last-sync" style="color: var(--text-secondary); font-family: 'Barlow Condensed', sans-serif;">JUST NOW</span>
                     </div>
                 </div>
+
+                <!-- Danger Zone -->
+                <div class="chart-container" style="border-color: var(--error);">
+                    <h3 style="font-size: 20px; margin-bottom: 8px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; color: var(--error);">DANGER ZONE</h3>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">PERMANENTLY DELETE YOUR ACCOUNT AND ALL ASSOCIATED DATA.</p>
+                    <button class="btn btn-secondary btn-small" style="border-color: var(--error); color: var(--error);" onclick="showDeleteAccountConfirm()">DELETE ACCOUNT</button>
+                    <div id="delete-account-section"></div>
+                </div>
             </div>
         </div>
 
