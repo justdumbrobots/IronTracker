@@ -606,23 +606,41 @@ async function saveTrainerDirectorySettings() {
 }
 
 async function doAthleteSearch() {
-    const q = el('athlete-search-input')?.value.trim();
-    if (!q || q.length < 2) { toast('ENTER AT LEAST 2 CHARACTERS', 'error'); return; }
+    const rawQ = el('athlete-search-input')?.value.trim();
+    if (!rawQ || rawQ.length < 2) { toast('ENTER AT LEAST 2 CHARACTERS', 'error'); return; }
     const results = el('athlete-search-results');
     if (!results) return;
     results.innerHTML = '<p style="color:var(--text-secondary); font-size:13px;">SEARCHING...</p>';
     try {
-        const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'athlete')));
-        const ql = q.toLowerCase();
-        const matches = snap.docs
-            .map(d => ({ uid: d.id, ...d.data() }))
-            .filter(u => u.uid !== getUser().uid)
-            .filter(u =>
-                (u.displayName || '').toLowerCase().includes(ql) ||
-                (u.username || '').toLowerCase().includes(ql));
+        const ql = rawQ.toLowerCase();
+        let matches = [];
+
+        if (rawQ.includes('@')) {
+            // Email search — query directly by email field (exact match, try both cases)
+            const [snapExact, snapLower] = await Promise.all([
+                getDocs(query(collection(db, 'users'), where('email', '==', rawQ))),
+                getDocs(query(collection(db, 'users'), where('email', '==', ql)))
+            ]);
+            const seen = new Set();
+            [...snapExact.docs, ...snapLower.docs].forEach(d => {
+                if (!seen.has(d.id)) { seen.add(d.id); matches.push({ uid: d.id, ...d.data() }); }
+            });
+        } else {
+            // Username / display name search — fetch all users and filter client-side
+            // (no role filter so users without a role field are still found)
+            const snap = await getDocs(collection(db, 'users'));
+            matches = snap.docs
+                .map(d => ({ uid: d.id, ...d.data() }))
+                .filter(u =>
+                    (u.displayName || '').toLowerCase().includes(ql) ||
+                    (u.username || '').toLowerCase().includes(ql) ||
+                    (u.email || '').toLowerCase().includes(ql));
+        }
+
+        matches = matches.filter(u => u.uid !== getUser().uid);
 
         if (matches.length === 0) {
-            results.innerHTML = '<p style="color:var(--text-secondary); font-size:13px;">NO ATHLETES FOUND WITH THAT USERNAME</p>';
+            results.innerHTML = '<p style="color:var(--text-secondary); font-size:13px;">NO USERS FOUND</p>';
             return;
         }
         results.innerHTML = matches.map(a => `
@@ -630,14 +648,17 @@ async function doAthleteSearch() {
                         background:var(--bg-hover); border:1px solid var(--border); border-radius:8px;
                         padding:12px; margin-bottom:8px;">
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <div class="trainer-athlete-avatar">${(a.displayName || 'A').charAt(0).toUpperCase()}</div>
-                    <div style="font-weight:700; font-family:'Barlow Condensed',sans-serif; font-size:17px;">${esc(a.displayName || a.email || 'ATHLETE')}</div>
+                    <div class="trainer-athlete-avatar">${(a.displayName || a.email || 'A').charAt(0).toUpperCase()}</div>
+                    <div>
+                        <div style="font-weight:700; font-family:'Barlow Condensed',sans-serif; font-size:17px;">${esc(a.displayName || a.email || 'USER')}</div>
+                        ${a.email ? `<div style="font-size:12px; color:var(--text-secondary);">${esc(a.email)}</div>` : ''}
+                    </div>
                 </div>
-                <button class="btn btn-small" onclick="sendAthleteInvite('${a.uid}','${esc(a.displayName || a.email || 'Athlete')}')">INVITE</button>
+                <button class="btn btn-small" onclick="sendAthleteInvite('${a.uid}','${esc(a.displayName || a.email || 'User')}')">INVITE</button>
             </div>`).join('');
     } catch(e) {
-        results.innerHTML = '<p style="color:var(--error); font-size:13px;">SEARCH FAILED</p>';
-        console.error(e);
+        results.innerHTML = `<p style="color:var(--error); font-size:13px;">SEARCH FAILED — ${esc(e.message)}</p>`;
+        console.error('doAthleteSearch error:', e);
     }
 }
 
