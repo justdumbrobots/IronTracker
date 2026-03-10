@@ -41,6 +41,8 @@ export function initTrainer() {
         listenForConnectionRequests();
         listenForMyAthletes();
         listenForWorkoutCompletions();
+        loadCoachingPanel();
+        ensureTrainerProfile();
     }
     if (role === 'athlete') {
         listenForAssignments();
@@ -536,12 +538,130 @@ function copyReferralLink() {
         .catch(() => toast('COPY FAILED — LINK: ' + link, 'error'));
 }
 
-// ─── ATHLETE: COACHING PANEL ──────────────────────────────────────────────────
+// ─── TRAINER: AUTO-INIT PROFILE ───────────────────────────────────────────────
+async function ensureTrainerProfile() {
+    const user = getUser();
+    if (!user) return;
+    try {
+        const snap = await getDoc(doc(db, 'users', user.uid));
+        const data = snap.data() || {};
+        if (!data.trainerProfile) {
+            await updateDoc(doc(db, 'users', user.uid), {
+                trainerProfile: { bio: '', specialties: [], location: '', listedInDirectory: true, acceptingClients: true }
+            });
+        }
+    } catch(e) { console.error('ensureTrainerProfile error:', e); }
+}
+
+// ─── TRAINER: ATHLETE INVITE SEARCH ───────────────────────────────────────────
+function showAthleteInviteSearch() {
+    const container = el('coaching-panel');
+    if (!container) return;
+    container.innerHTML = `
+        <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; color:var(--text-secondary); letter-spacing:1px; margin-bottom:14px;">INVITE AN ATHLETE</div>
+        <div style="display:flex; gap:8px; margin-bottom:16px;">
+            <input type="text" class="form-input" id="athlete-search-input" placeholder="SEARCH BY USERNAME..." style="flex:1;"
+                onkeydown="if(event.key==='Enter') doAthleteSearch()">
+            <button class="btn btn-small" onclick="doAthleteSearch()">SEARCH</button>
+        </div>
+        <div id="athlete-search-results"></div>`;
+}
+
+async function doAthleteSearch() {
+    const q = el('athlete-search-input')?.value.trim();
+    if (!q || q.length < 2) { toast('ENTER AT LEAST 2 CHARACTERS', 'error'); return; }
+    const results = el('athlete-search-results');
+    if (!results) return;
+    results.innerHTML = '<p style="color:var(--text-secondary); font-size:13px;">SEARCHING...</p>';
+    try {
+        const snap = await getDocs(query(collection(db, 'users'), where('role', '==', 'athlete')));
+        const ql = q.toLowerCase();
+        const matches = snap.docs
+            .map(d => ({ uid: d.id, ...d.data() }))
+            .filter(u => u.uid !== getUser().uid)
+            .filter(u =>
+                (u.displayName || '').toLowerCase().includes(ql) ||
+                (u.username || '').toLowerCase().includes(ql));
+
+        if (matches.length === 0) {
+            results.innerHTML = '<p style="color:var(--text-secondary); font-size:13px;">NO ATHLETES FOUND WITH THAT USERNAME</p>';
+            return;
+        }
+        results.innerHTML = matches.map(a => `
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;
+                        background:var(--bg-hover); border:1px solid var(--border); border-radius:8px;
+                        padding:12px; margin-bottom:8px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div class="trainer-athlete-avatar">${(a.displayName || 'A').charAt(0).toUpperCase()}</div>
+                    <div style="font-weight:700; font-family:'Barlow Condensed',sans-serif; font-size:17px;">${esc(a.displayName || a.email || 'ATHLETE')}</div>
+                </div>
+                <button class="btn btn-small" onclick="sendAthleteInvite('${a.uid}','${esc(a.displayName || a.email || 'Athlete')}')">INVITE</button>
+            </div>`).join('');
+    } catch(e) {
+        results.innerHTML = '<p style="color:var(--error); font-size:13px;">SEARCH FAILED</p>';
+        console.error(e);
+    }
+}
+
+async function sendAthleteInvite(athleteUid, athleteDisplayName) {
+    const user = getUser();
+    try {
+        const athleteDoc = await getDoc(doc(db, 'users', athleteUid));
+        if (athleteDoc.data()?.trainerId === user.uid) {
+            toast('ALREADY LINKED WITH THIS ATHLETE', 'error'); return;
+        }
+        const existing = await getDocs(query(collection(db, 'connection_requests'),
+            where('athleteId', '==', athleteUid),
+            where('trainerId', '==', user.uid),
+            where('status', '==', 'pending')));
+        if (!existing.empty) { toast('INVITE ALREADY SENT', 'error'); return; }
+
+        await addDoc(collection(db, 'connection_requests'), {
+            athleteId: athleteUid,
+            athleteDisplayName: athleteDisplayName,
+            trainerId: user.uid,
+            trainerDisplayName: user.displayName || user.email,
+            status: 'pending',
+            initiatedBy: 'trainer',
+            createdAt: new Date().toISOString()
+        });
+        toast(`INVITE SENT TO ${athleteDisplayName.toUpperCase()}!`, 'success');
+        doAthleteSearch();
+    } catch(e) { toast('ERROR SENDING INVITE', 'error'); console.error(e); }
+}
+
+// ─── ATHLETE: ACCEPT / DECLINE TRAINER INVITE ─────────────────────────────────
+async function acceptTrainerInvite(requestId, trainerId, trainerName) {
+    try {
+        await updateDoc(doc(db, 'connection_requests', requestId), { status: 'accepted' });
+        await updateDoc(doc(db, 'users', getUser().uid), { trainerId, trainerDisplayName: trainerName });
+        window.userTrainerId = trainerId;
+        toast(`CONNECTED WITH ${trainerName.toUpperCase()}!`, 'success');
+        loadCoachingPanel();
+    } catch(e) { toast('ERROR ACCEPTING INVITE', 'error'); }
+}
+
+async function declineTrainerInvite(requestId) {
+    try {
+        await updateDoc(doc(db, 'connection_requests', requestId), { status: 'declined' });
+        toast('INVITE DECLINED');
+        loadCoachingPanel();
+    } catch(e) { toast('ERROR DECLINING INVITE', 'error'); }
+}
+
+// ─── COACHING PANEL ────────────────────────────────────────────────────────────
 export async function loadCoachingPanel() {
     const container = el('coaching-panel');
     if (!container) return;
     const user = getUser();
     if (!user) return;
+
+    // Trainers get athlete invite search instead of the athlete coaching panel
+    if (window.userRole === 'trainer') {
+        showAthleteInviteSearch();
+        return;
+    }
+
     try {
         const snap = await getDoc(doc(db, 'users', user.uid));
         const data = snap.data() || {};
@@ -572,7 +692,29 @@ export async function loadCoachingPanel() {
                     <button class="btn btn-small" onclick="showAssignments()">REVIEW</button>
                 </div>` : ''}`;
         } else {
+            // Check for pending trainer-initiated invites
+            const inviteSnap = await getDocs(query(collection(db, 'connection_requests'),
+                where('athleteId', '==', user.uid),
+                where('initiatedBy', '==', 'trainer'),
+                where('status', '==', 'pending')));
+            const invites = inviteSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
             container.innerHTML = `
+                ${invites.length > 0 ? `
+                <div style="margin-bottom:20px;">
+                    <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px; color:var(--text-secondary); letter-spacing:1px; margin-bottom:10px;">TRAINER INVITATIONS</div>
+                    ${invites.map(inv => `
+                        <div style="background:rgba(var(--primary-rgb,255,255,255),0.06); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                            <div>
+                                <div style="font-weight:700; font-family:'Barlow Condensed',sans-serif; font-size:16px;">${esc(inv.trainerDisplayName || 'TRAINER')}</div>
+                                <div style="font-size:12px; color:var(--text-secondary);">WANTS TO COACH YOU</div>
+                            </div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="btn btn-small" onclick="acceptTrainerInvite('${inv.id}','${inv.trainerId}','${esc(inv.trainerDisplayName || 'Trainer')}')">ACCEPT</button>
+                                <button class="btn btn-small btn-secondary" onclick="declineTrainerInvite('${inv.id}')">DECLINE</button>
+                            </div>
+                        </div>`).join('')}
+                </div>` : ''}
                 <div style="text-align:center; padding:20px 0;">
                     <div style="font-size:36px; margin-bottom:8px;">🏋️</div>
                     <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:18px; margin-bottom:4px;">NO TRAINER LINKED</div>
@@ -760,6 +902,10 @@ window.showTrainerDirectory    = showTrainerDirectory;
 window.filterTrainers          = filterTrainers;
 window.showAssignments         = showAssignments;
 window.submitTrainerComment    = submitTrainerComment;
+window.doAthleteSearch         = doAthleteSearch;
+window.sendAthleteInvite       = sendAthleteInvite;
+window.acceptTrainerInvite     = acceptTrainerInvite;
+window.declineTrainerInvite    = declineTrainerInvite;
 window.openAthleteWorkoutDetail= openAthleteWorkoutDetail;
 window.openMessageWith         = (uid, name) => {
     window.switchView('messages');
