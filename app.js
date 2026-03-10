@@ -3454,6 +3454,18 @@ window.acceptTrainerPlan = (plan) => {
 // ═════════════════════════════════════════════
 // EVENT LISTENERS
 // ═════════════════════════════════════════════
+
+// When a new service worker takes over (skipWaiting + clients.claim), reload
+// so the browser gets the updated HTML/CSS/JS rather than the old cached version.
+if ('serviceWorker' in navigator) {
+    let _swReloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (_swReloading) return;
+        _swReloading = true;
+        window.location.reload();
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Capture trainer referral link param before anything else
     const refParam = new URLSearchParams(window.location.search).get('ref');
