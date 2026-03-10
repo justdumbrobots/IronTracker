@@ -344,8 +344,10 @@ function showDeleteAccountConfirm() {
         <div style="border:1px solid var(--error); border-radius:8px; padding:16px; margin-top:16px;">
             <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; color:var(--error); margin-bottom:8px;">⚠ THIS CANNOT BE UNDONE</div>
             <div style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">YOUR ACCOUNT, ALL WORKOUT HISTORY, AND DATA WILL BE PERMANENTLY DELETED. TYPE <strong style="color:var(--text-primary);">DELETE</strong> TO CONFIRM.</div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <input type="text" class="form-input" id="delete-confirm-input" placeholder="TYPE DELETE TO CONFIRM" style="flex:1; text-transform:uppercase;">
+            <input type="text" class="form-input" id="delete-confirm-input" placeholder="TYPE DELETE TO CONFIRM"
+                style="width:100%; text-transform:uppercase; margin-bottom:10px;"
+                onkeydown="if(event.key==='Enter') confirmDeleteAccount()">
+            <div style="display:flex; gap:8px;">
                 <button class="btn btn-small" style="background:var(--error); border-color:var(--error);" onclick="confirmDeleteAccount()">DELETE MY ACCOUNT</button>
                 <button class="btn btn-small btn-secondary" onclick="cancelDeleteAccount()">CANCEL</button>
             </div>
@@ -383,9 +385,10 @@ async function confirmDeleteAccount() {
             <div style="border:1px solid var(--error); border-radius:8px; padding:16px; margin-top:16px;">
                 <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; color:var(--error); margin-bottom:8px;">⚠ CONFIRM YOUR PASSWORD</div>
                 <div style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">ENTER YOUR PASSWORD TO PERMANENTLY DELETE YOUR ACCOUNT.</div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    <input type="password" class="form-input" id="delete-password-input" placeholder="YOUR PASSWORD" style="flex:1;"
-                        onkeydown="if(event.key==='Enter') confirmDeleteWithPassword()">
+                <input type="password" class="form-input" id="delete-password-input" placeholder="YOUR PASSWORD"
+                    style="width:100%; margin-bottom:10px;"
+                    onkeydown="if(event.key==='Enter') confirmDeleteWithPassword()">
+                <div style="display:flex; gap:8px;">
                     <button class="btn btn-small" style="background:var(--error); border-color:var(--error);" onclick="confirmDeleteWithPassword()">CONFIRM DELETE</button>
                     <button class="btn btn-small btn-secondary" onclick="cancelDeleteAccount()">CANCEL</button>
                 </div>
