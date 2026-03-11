@@ -615,27 +615,16 @@ async function doAthleteSearch() {
         const ql = rawQ.toLowerCase();
         let matches = [];
 
-        if (rawQ.includes('@')) {
-            // Email search — query directly by email field (exact match, try both cases)
-            const [snapExact, snapLower] = await Promise.all([
-                getDocs(query(collection(db, 'users'), where('email', '==', rawQ))),
-                getDocs(query(collection(db, 'users'), where('email', '==', ql)))
-            ]);
-            const seen = new Set();
-            [...snapExact.docs, ...snapLower.docs].forEach(d => {
-                if (!seen.has(d.id)) { seen.add(d.id); matches.push({ uid: d.id, ...d.data() }); }
-            });
-        } else {
-            // Username / display name search — fetch all users and filter client-side
-            // (no role filter so users without a role field are still found)
-            const snap = await getDocs(collection(db, 'users'));
-            matches = snap.docs
-                .map(d => ({ uid: d.id, ...d.data() }))
-                .filter(u =>
-                    (u.displayName || '').toLowerCase().includes(ql) ||
-                    (u.username || '').toLowerCase().includes(ql) ||
-                    (u.email || '').toLowerCase().includes(ql));
-        }
+        // Fetch all users and filter client-side by display name, username, or email.
+        // This handles Google Sign-In users whose email is the only identifier,
+        // and avoids Firestore WHERE queries that may be blocked by security rules.
+        const snap = await getDocs(collection(db, 'users'));
+        matches = snap.docs
+            .map(d => ({ uid: d.id, ...d.data() }))
+            .filter(u =>
+                (u.displayName || '').toLowerCase().includes(ql) ||
+                (u.username || '').toLowerCase().includes(ql) ||
+                (u.email || '').toLowerCase().includes(ql));
 
         matches = matches.filter(u => u.uid !== getUser().uid);
 
