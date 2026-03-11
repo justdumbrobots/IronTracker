@@ -142,7 +142,7 @@
                 <div class="header-content">
                     <div class="logo">IRON<span style="color:var(--primary)">SYNC</span>IQ</div>
                     <nav class="nav-tabs">
-                        <button class="nav-tab active" data-view="workout">WORKOUT</button>
+                        <button class="nav-tab active" data-view="workout">WORKOUT <span id="workout-active-badge" class="workout-active-badge" style="display:none;"></span></button>
                         <button class="nav-tab" data-view="plans">MY PLANS</button>
                         <button class="nav-tab" data-view="library">LIBRARY</button>
                         <button class="nav-tab" data-view="community">COMMUNITY</button>
@@ -167,6 +167,9 @@
             </div>
         </div>
 
+        <!-- ACTIVE WORKOUT BANNER (shown on non-workout pages when a session is running) -->
+        <div id="workout-in-progress-banner" style="display:none; background:var(--primary); color:#fff; text-align:center; padding:8px 16px; font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; letter-spacing:1px; cursor:pointer;" onclick="switchView('workout')">● WORKOUT IN PROGRESS — <span id="workout-banner-timer">0:00</span> — TAP TO RETURN</div>
+
         <div class="container">
             <!-- WORKOUT VIEW -->
             <div id="workout-view" class="view active">
@@ -176,7 +179,7 @@
                     <div id="last-workout-info"></div>
                     <div id="inactive-clock" class="inactive-clock" style="display: none;">
                         <div class="inactive-clock-time" id="inactive-clock-time">0D 0H</div>
-                        <div class="inactive-clock-label">TIME SINCE LAST PUMP</div>
+                        <div class="inactive-clock-label">TIME SINCE LAST WORKOUT</div>
                     </div>
                     <div style="margin-top: 20px;">
                         <button class="btn" id="start-workout-btn">▶ START WORKOUT</button>
@@ -358,7 +361,7 @@
 
             <!-- ADMIN VIEW -->
             <div id="admin-view" class="view">
-                <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px;">⚙️ ADMIN PANEL</h2>
+                <h2 style="font-family: 'Barlow Condensed', sans-serif; font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 6px;">ADMIN PANEL</h2>
                 <p style="color: var(--text-secondary); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px;">RESTRICTED ACCESS</p>
 
                 <div class="community-sub-tabs" style="margin-bottom: 20px;">
@@ -426,11 +429,6 @@
                     </div>
                 </div>
 
-                <!-- Export Button -->
-                <div style="margin-bottom: 30px; text-align: right;">
-                    <button class="btn btn-secondary btn-small" id="export-csv-btn">📥 EXPORT WORKOUT DATA (CSV)</button>
-                </div>
-
                 <!-- Body Weight Tracking -->
                 <div class="chart-container">
                     <div class="chart-header">
@@ -456,7 +454,7 @@
                     </div>
                     <canvas id="weight-chart" height="200"></canvas>
                     <div id="weight-entries-list" style="margin-top: 20px;">
-                        <div class="empty-state"><div class="empty-state-icon">⚖️</div><p>NO WEIGHT ENTRIES YET</p></div>
+                        <div class="empty-state"><div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-secondary);"><path d="M12 3a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/><line x1="12" y1="5" x2="12" y2="8"/><path d="M5 8h14"/><path d="M6 8l-2 8h16l-2-8"/><line x1="9" y1="8" x2="7" y2="16"/><line x1="15" y1="8" x2="17" y2="16"/><line x1="3" y1="20" x2="21" y2="20"/></svg></div><p>NO WEIGHT ENTRIES YET</p></div>
                     </div>
                     <button class="btn btn-small" id="add-weight-btn" style="margin-top: 16px;">+ ADD WEIGHT ENTRY</button>
                 </div>
@@ -504,7 +502,7 @@
 
                 <!-- Coaching Panel (athletes: trainer link/directory; trainers: invite athletes by username) -->
                 <div class="chart-container" id="coaching-section" style="margin-bottom:24px;">
-                    <h3 style="font-size:20px; margin-bottom:16px; font-family:'Barlow Condensed',sans-serif; text-transform:uppercase; display:flex; align-items:center; gap:10px;">COACHING <span class="nav-badge" id="assignments-badge" style="display:none;"></span></h3>
+                    <h3 class="profile-section-heading" style="display:flex; align-items:center; gap:10px;">COACHING <span class="nav-badge" id="assignments-badge" style="display:none;"></span></h3>
                     <div id="coaching-panel"><p style="color:var(--text-secondary);">LOADING...</p></div>
                 </div>
 
@@ -518,7 +516,8 @@
                             <button class="profile-photo-upload" id="change-profile-photo" style="position: absolute; bottom: 0; right: calc(50% - 60px); background: var(--primary); color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 18px;">📷</button>
                             <input type="file" id="profile-photo-input" accept="image/*" style="display: none;">
                         </div>
-                        <h3 style="font-size: 24px; margin-bottom: 8px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;" id="user-email"></h3>
+                        <h3 style="font-size: 24px; margin-bottom: 4px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;" id="user-display-name"></h3>
+                        <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 8px;" id="user-email"></p>
                         <p style="color: var(--text-secondary); margin-bottom: 30px;">MEMBER SINCE <span id="user-since"></span></p>
                         <button class="btn btn-secondary" id="logout-btn">LOGOUT</button>
                     </div>
@@ -526,7 +525,7 @@
 
                 <!-- Theme Toggle -->
                 <div class="chart-container">
-                    <h3 style="font-size: 20px; margin-bottom: 16px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;">APPEARANCE</h3>
+                    <h3 class="profile-section-heading">APPEARANCE</h3>
                     <div class="theme-toggle" id="theme-toggle">
                         <span style="flex: 1; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; letter-spacing: 1px;">DARK MODE</span>
                         <div class="toggle-switch"></div>
@@ -535,7 +534,7 @@
 
                 <!-- Rest Timer Settings -->
                 <div class="chart-container">
-                    <h3 style="font-size: 20px; margin-bottom: 16px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;">REST TIMER SETTINGS</h3>
+                    <h3 class="profile-section-heading">REST TIMER SETTINGS</h3>
                     <div class="form-group">
                         <label class="form-label">DEFAULT REST TIME</label>
                         <select class="form-input" id="default-rest-time">
@@ -556,7 +555,7 @@
 
                 <!-- Body Weight Goal -->
                 <div class="chart-container">
-                    <h3 style="font-size: 20px; margin-bottom: 16px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;">BODY WEIGHT GOAL</h3>
+                    <h3 class="profile-section-heading">BODY WEIGHT GOAL</h3>
                     <div class="form-group">
                         <label class="form-label">TARGET WEIGHT (LBS)</label>
                         <input type="number" class="form-input" id="weight-goal-input" placeholder="e.g., 180">
@@ -566,21 +565,24 @@
 
                 <!-- Data Sync -->
                 <div class="chart-container">
-                    <h3 style="font-size: 20px; margin-bottom: 16px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;">DATA SYNC</h3>
+                    <h3 class="profile-section-heading">DATA SYNC</h3>
                     <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border);">
                         <span>CLOUD SYNC</span>
                         <span style="color: var(--success); font-family: 'Barlow Condensed', sans-serif; font-weight: 700;">✓ ENABLED</span>
                     </div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border);">
                         <span>LAST SYNCED</span>
                         <span id="last-sync" style="color: var(--text-secondary); font-family: 'Barlow Condensed', sans-serif;">JUST NOW</span>
+                    </div>
+                    <div style="padding-top: 16px;">
+                        <button class="btn btn-secondary btn-small" id="export-csv-btn">📥 EXPORT WORKOUT DATA (CSV)</button>
                     </div>
                 </div>
 
                 <!-- Danger Zone -->
-                <div class="chart-container" style="border-color: var(--error);">
-                    <h3 style="font-size: 20px; margin-bottom: 8px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase; color: var(--error);">DANGER ZONE</h3>
-                    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">PERMANENTLY DELETE YOUR ACCOUNT AND ALL ASSOCIATED DATA.</p>
+                <div class="chart-container" style="border-color: var(--error); margin-top: 48px;">
+                    <h3 class="profile-section-heading" style="color: var(--error);">DANGER ZONE</h3>
+                    <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 16px;">PERMANENTLY DELETES YOUR ACCOUNT AND ALL WORKOUT HISTORY. THIS CANNOT BE UNDONE.</p>
                     <button class="btn btn-secondary btn-small" style="border-color: var(--error); color: var(--error);" onclick="showDeleteAccountConfirm()">DELETE ACCOUNT</button>
                     <div id="delete-account-section"></div>
                 </div>
