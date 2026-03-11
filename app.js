@@ -344,8 +344,10 @@ function showDeleteAccountConfirm() {
         <div style="border:1px solid var(--error); border-radius:8px; padding:16px; margin-top:16px;">
             <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; color:var(--error); margin-bottom:8px;">⚠ THIS CANNOT BE UNDONE</div>
             <div style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">YOUR ACCOUNT, ALL WORKOUT HISTORY, AND DATA WILL BE PERMANENTLY DELETED. TYPE <strong style="color:var(--text-primary);">DELETE</strong> TO CONFIRM.</div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <input type="text" class="form-input" id="delete-confirm-input" placeholder="TYPE DELETE TO CONFIRM" style="flex:1; text-transform:uppercase;">
+            <input type="text" class="form-input" id="delete-confirm-input" placeholder="TYPE DELETE TO CONFIRM"
+                style="width:100%; text-transform:uppercase; margin-bottom:10px;"
+                onkeydown="if(event.key==='Enter') confirmDeleteAccount()">
+            <div style="display:flex; gap:8px;">
                 <button class="btn btn-small" style="background:var(--error); border-color:var(--error);" onclick="confirmDeleteAccount()">DELETE MY ACCOUNT</button>
                 <button class="btn btn-small btn-secondary" onclick="cancelDeleteAccount()">CANCEL</button>
             </div>
@@ -364,22 +366,63 @@ async function confirmDeleteAccount() {
     }
     const user = auth.currentUser;
     if (!user) return;
-    try {
-        // Delete Firestore data first
+
+    const isGoogle = user.providerData.some(p => p.providerId === 'google.com');
+    if (isGoogle) {
         try {
-            await deleteDoc(doc(db, 'users', user.uid, 'data', 'workout_data'));
-        } catch(e) { /* sub-doc may not exist */ }
-        await deleteDoc(doc(db, 'users', user.uid));
-        // Delete Firebase auth account
-        await deleteUser(user);
-        showToast('ACCOUNT DELETED', 'info');
+            await reauthenticateWithPopup(user, new GoogleAuthProvider());
+            await performAccountDeletion(user);
+        } catch(e) {
+            if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return;
+            showToast('AUTHENTICATION FAILED — ACCOUNT NOT DELETED', 'error');
+            console.error(e);
+        }
+    } else {
+        // Show inline password confirmation step
+        const section = document.getElementById('delete-account-section');
+        if (!section) return;
+        section.innerHTML = `
+            <div style="border:1px solid var(--error); border-radius:8px; padding:16px; margin-top:16px;">
+                <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:14px; color:var(--error); margin-bottom:8px;">⚠ CONFIRM YOUR PASSWORD</div>
+                <div style="font-size:13px; color:var(--text-secondary); margin-bottom:12px;">ENTER YOUR PASSWORD TO PERMANENTLY DELETE YOUR ACCOUNT.</div>
+                <input type="password" class="form-input" id="delete-password-input" placeholder="YOUR PASSWORD"
+                    style="width:100%; margin-bottom:10px;"
+                    onkeydown="if(event.key==='Enter') confirmDeleteWithPassword()">
+                <div style="display:flex; gap:8px;">
+                    <button class="btn btn-small" style="background:var(--error); border-color:var(--error);" onclick="confirmDeleteWithPassword()">CONFIRM DELETE</button>
+                    <button class="btn btn-small btn-secondary" onclick="cancelDeleteAccount()">CANCEL</button>
+                </div>
+            </div>`;
+        document.getElementById('delete-password-input')?.focus();
+    }
+}
+
+async function confirmDeleteWithPassword() {
+    const password = document.getElementById('delete-password-input')?.value;
+    if (!password) { showToast('ENTER YOUR PASSWORD', 'error'); return; }
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+        const credential = EmailAuthProvider.credential(user.email, password);
+        await reauthenticateWithCredential(user, credential);
+        await performAccountDeletion(user);
     } catch(e) {
-        if (e.code === 'auth/requires-recent-login') {
-            showToast('PLEASE SIGN OUT AND SIGN BACK IN, THEN TRY AGAIN', 'error');
+        if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+            showToast('INCORRECT PASSWORD', 'error');
         } else {
             showToast('DELETE FAILED: ' + e.message, 'error');
+            console.error(e);
         }
     }
+}
+
+async function performAccountDeletion(user) {
+    try {
+        await deleteDoc(doc(db, 'users', user.uid, 'data', 'workout_data'));
+    } catch(e) { /* sub-doc may not exist */ }
+    await deleteDoc(doc(db, 'users', user.uid));
+    await deleteUser(user);
+    showToast('ACCOUNT DELETED', 'info');
 }
 
 async function updateProfileUI() {
@@ -3438,9 +3481,10 @@ window.loadAdminActivity = loadAdminActivity;
 window.handleRoleSelect       = handleRoleSelect;
 window.showToastGlobal        = showToast;
 window.switchView             = switchView;
-window.showDeleteAccountConfirm = showDeleteAccountConfirm;
-window.cancelDeleteAccount    = cancelDeleteAccount;
-window.confirmDeleteAccount   = confirmDeleteAccount;
+window.showDeleteAccountConfirm  = showDeleteAccountConfirm;
+window.cancelDeleteAccount       = cancelDeleteAccount;
+window.confirmDeleteAccount      = confirmDeleteAccount;
+window.confirmDeleteWithPassword = confirmDeleteWithPassword;
 // Expose workout plans for trainer plan assignment picker
 Object.defineProperty(window, 'myWorkoutPlans', { get: () => workoutPlans });
 Object.defineProperty(window, 'myWorkoutHistory', { get: () => workoutHistory });
