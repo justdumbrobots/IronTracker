@@ -221,9 +221,9 @@ async function loadUserRole() {
         window.userTrainerId = userTrainerId;
         window.currentUserId = currentUser.uid;
         window.currentUserName = currentUser.displayName || currentUser.email?.split('@')[0] || 'Athlete';
-        // Show/hide role-specific nav tabs
-        document.getElementById('trainer-nav-tab').style.display = userRole === 'trainer' ? '' : 'none';
-        document.getElementById('messages-nav-tab').style.display = (userRole === 'trainer' || userTrainerId) ? '' : 'none';
+        // Show COACHING and MESSAGES for all authenticated users
+        document.getElementById('trainer-nav-tab').style.display = '';
+        document.getElementById('messages-nav-tab').style.display = '';
         // Boot role-specific module (initTrainer also populates the coaching panel)
         if (typeof window.initTrainer === 'function') window.initTrainer();
         if (typeof window.initMessaging === 'function') window.initMessaging();
@@ -428,13 +428,16 @@ async function performAccountDeletion(user) {
 async function updateProfileUI() {
     if (!currentUser) return;
     const email = currentUser.email;
-    const initial = email.charAt(0).toUpperCase();
+    const displayName = currentUser.displayName;
     const createdDate = new Date(parseInt(currentUser.metadata.createdAt));
-    
-    document.getElementById('user-email').textContent = email;
-    document.getElementById('user-since').textContent = createdDate.toLocaleDateString('en-US', { 
-        month: 'short', 
-        year: 'numeric' 
+
+    const nameEl = document.getElementById('user-display-name');
+    const emailEl = document.getElementById('user-email');
+    if (nameEl) nameEl.textContent = displayName || 'YOUR PROFILE';
+    if (emailEl) emailEl.textContent = email;
+    document.getElementById('user-since').textContent = createdDate.toLocaleDateString('en-US', {
+        month: 'short',
+        year: 'numeric'
     });
     
     // Load profile photo or show initial
@@ -608,14 +611,21 @@ function renderLibraryPlans() {
         return;
     }
     
-    grid.innerHTML = filtered.map(plan => {
+    // Color legend: left-border matches the difficulty badge color
+    const legend = `<div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; font-size:11px; font-family:'Barlow Condensed',sans-serif; letter-spacing:1px; color:var(--text-secondary);">
+        <span><span style="display:inline-block;width:10px;height:10px;background:var(--success);border-radius:2px;margin-right:4px;vertical-align:middle;"></span>BEGINNER</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:var(--warning);border-radius:2px;margin-right:4px;vertical-align:middle;"></span>INTERMEDIATE</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:var(--danger);border-radius:2px;margin-right:4px;vertical-align:middle;"></span>ADVANCED</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:var(--primary);border-radius:2px;margin-right:4px;vertical-align:middle;"></span>SPECIALIZED</span>
+    </div>`;
+    grid.innerHTML = legend + filtered.map(plan => {
         const totalExercises = plan.days.reduce((sum, day) => sum + day.exercises.length, 0);
-        const totalSets = plan.days.reduce((sum, day) => 
+        const totalSets = plan.days.reduce((sum, day) =>
             sum + day.exercises.reduce((s, e) => s + e.sets, 0), 0);
-        
+
         // Check if user already has this plan
         const alreadyAdded = workoutPlans.some(p => p.libraryId === plan.id);
-        
+
         // Get difficulty badge color
         let difficultyColor = 'var(--success)';
         if (plan.difficulty === 'intermediate') difficultyColor = 'var(--warning)';
@@ -907,7 +917,7 @@ function renderWeightChart() {
 function renderWeightEntries() {
     const listEl = document.getElementById('weight-entries-list');
     if (bodyWeightEntries.length === 0) {
-        listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚖️</div><p>NO WEIGHT ENTRIES YET</p></div>';
+        listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-secondary);"><path d="M12 3a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/><line x1="12" y1="5" x2="12" y2="8"/><path d="M5 8h14"/><path d="M6 8l-2 8h16l-2-8"/><line x1="9" y1="8" x2="7" y2="16"/><line x1="15" y1="8" x2="17" y2="16"/><line x1="3" y1="20" x2="21" y2="20"/></svg></div><p>NO WEIGHT ENTRIES YET</p></div>';
         return;
     }
     
@@ -1264,6 +1274,7 @@ function switchView(viewName) {
     if (viewName === 'trainer' && typeof window.loadTrainerView === 'function') window.loadTrainerView();
     if (viewName === 'messages' && typeof window.loadMessagesView === 'function') window.loadMessagesView();
     if (viewName === 'profile' && typeof window.loadCoachingPanel === 'function') window.loadCoachingPanel();
+    updateWorkoutActiveIndicator(viewName);
 }
 
 function updateWorkoutHero() {
@@ -1299,9 +1310,21 @@ function updateWorkoutHero() {
     const lastWorkout = getLastCompletedWorkout();
     if (lastWorkout && lastWorkoutEl) {
         lastWorkoutEl.style.display = 'block';
-        const date = new Date(lastWorkout.date);
-        const daysAgo = Math.floor((Date.now() - date.getTime()) / 86400000);
-        const timeStr = daysAgo === 0 ? 'TODAY' : daysAgo === 1 ? 'YESTERDAY' : `${daysAgo} DAYS AGO`;
+        const today = new Date();
+        const workoutDate = new Date(lastWorkout.date);
+        const todayStr = today.toDateString();
+        const yesterdayStr = new Date(today - 86400000).toDateString();
+        let timeStr;
+        if (workoutDate.toDateString() === todayStr) {
+            timeStr = 'TODAY';
+        } else if (workoutDate.toDateString() === yesterdayStr) {
+            timeStr = 'YESTERDAY';
+        } else {
+            const daysAgo = Math.floor((today - workoutDate) / 86400000);
+            timeStr = daysAgo <= 14
+                ? `${daysAgo} DAYS AGO`
+                : workoutDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
+        }
         lastWorkoutEl.innerHTML = `
             <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 10px; font-family: 'Barlow Condensed', sans-serif; text-transform: uppercase;">
                 <strong>LAST WORKOUT:</strong> ${escapeHtml(lastWorkout.planName)} - ${escapeHtml(lastWorkout.dayName)} · ${timeStr}
@@ -1317,7 +1340,19 @@ function updateWorkoutHero() {
 function renderPlans() {
     const grid = document.getElementById('plans-grid');
     if (workoutPlans.length === 0) {
-        grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📋</div><p>NO PLANS YET. CREATE YOUR FIRST!</p></div>';
+        grid.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <p>NO PLANS YET</p>
+                <p style="font-size:13px; color:var(--text-secondary); margin-top:8px;">CHOOSE A STARTING POINT FROM THE LIBRARY OR BUILD YOUR OWN</p>
+                <div style="display:flex; gap:12px; justify-content:center; margin-top:16px; flex-wrap:wrap;">
+                    <button class="btn btn-small" onclick="switchView('library')">BROWSE LIBRARY</button>
+                    <button class="btn btn-secondary btn-small" id="create-plan-from-empty">+ CREATE PLAN</button>
+                </div>
+            </div>`;
+        document.getElementById('create-plan-from-empty')?.addEventListener('click', () => {
+            document.getElementById('add-plan-btn').click();
+        });
         return;
     }
     grid.innerHTML = workoutPlans.map((plan, index) => {
@@ -1344,7 +1379,15 @@ function renderPlans() {
         </div>
     `;
     }).join('');
-    
+
+    if (workoutPlans.length < 3) {
+        grid.insertAdjacentHTML('beforeend', `
+            <div style="padding:14px 16px; background:var(--bg-hover); border:1px dashed var(--border); border-radius:8px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                <span style="font-size:13px; color:var(--text-secondary); font-family:'Barlow Condensed',sans-serif; letter-spacing:1px;">LOOKING FOR MORE PROGRAMS?</span>
+                <button class="btn btn-secondary btn-small" onclick="switchView('library')">BROWSE LIBRARY</button>
+            </div>`);
+    }
+
     document.querySelectorAll('.select-plan-btn').forEach(btn => {
         btn.addEventListener('click', () => selectPlan(parseInt(btn.dataset.id)));
     });
@@ -1425,6 +1468,7 @@ function startWorkout() {
     
     startElapsedTimer();
     renderActiveWorkout();
+    updateWorkoutActiveIndicator('workout');
 }
 
 function startElapsedTimer() {
@@ -1434,8 +1478,19 @@ function startElapsedTimer() {
         const elapsed = Math.floor((Date.now() - new Date(currentWorkout.startTime)) / 1000);
         const mins = Math.floor(elapsed / 60);
         const secs = elapsed % 60;
-        document.getElementById('workout-elapsed').textContent = `⏱ ${mins}:${secs.toString().padStart(2, '0')} ELAPSED`;
+        const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+        document.getElementById('workout-elapsed').textContent = `⏱ ${timeStr} ELAPSED`;
+        const bannerTimer = document.getElementById('workout-banner-timer');
+        if (bannerTimer) bannerTimer.textContent = timeStr;
     }, 1000);
+}
+
+function updateWorkoutActiveIndicator(currentView) {
+    const badge = document.getElementById('workout-active-badge');
+    const banner = document.getElementById('workout-in-progress-banner');
+    const isActive = !!currentWorkout;
+    if (badge) badge.style.display = isActive ? '' : 'none';
+    if (banner) banner.style.display = (isActive && currentView !== 'workout') ? 'block' : 'none';
 }
 
 function renderActiveWorkout() {
@@ -1458,7 +1513,7 @@ function renderActiveWorkout() {
                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                         ${isLockedPlan ? `<div class="last-performance" style="color:var(--primary); border-color:var(--primary)40;">🔒 TRAINER PLAN</div>` : ''}
                         ${lastPerf ? `<div class="last-performance">LAST: ${escapeHtml(lastPerf)}</div>` : '<div class="last-performance">FIRST TIME!</div>'}
-                        ${lastEffort ? `<div class="last-performance" style="background:${lastEffort.color}20; color:${lastEffort.color}; border-color:${lastEffort.color}40;">${lastEffort.label} · ${lastEffort.adjLabel}</div>` : ''}
+                        ${lastEffort && !currentRating ? `<div class="last-performance" style="background:${lastEffort.color}20; color:${lastEffort.color}; border-color:${lastEffort.color}40;">${lastEffort.label} · ${lastEffort.adjLabel}</div>` : ''}
                         ${!isLockedPlan ? `
                         <select class="unit-select" data-ex="${exIndex}" data-field="weightUnit">
                             <option value="lbs" ${wUnit !== 'miles' ? 'selected' : ''}>LBS</option>
@@ -1480,12 +1535,18 @@ function renderActiveWorkout() {
                                     <button class="edit-set-btn" data-ex="${exIndex}" data-set="${setIndex}" style="font-size:11px; padding:2px 8px;">UNDO</button>
                                 </div>` : `
                             <div class="set-input-group">
-                                <input type="number" inputmode="decimal" class="set-input" placeholder="${wPlaceholder}"
-                                    value="${set.weight}" data-ex="${exIndex}" data-set="${setIndex}" data-field="weight"
-                                    ${set.completed ? 'disabled' : ''}>
-                                <input type="number" inputmode="numeric" class="set-input" placeholder="${rPlaceholder}"
-                                    value="${set.reps}" data-ex="${exIndex}" data-set="${setIndex}" data-field="reps"
-                                    ${set.completed ? 'disabled' : ''}>
+                                <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                                    <span style="font-size:10px; color:var(--text-secondary); font-family:'Barlow Condensed',sans-serif; letter-spacing:1px; text-transform:uppercase;">${wUnit === 'miles' ? 'MI' : 'LBS'}</span>
+                                    <input type="number" inputmode="decimal" class="set-input" placeholder="${wPlaceholder}"
+                                        value="${set.weight}" data-ex="${exIndex}" data-set="${setIndex}" data-field="weight"
+                                        ${set.completed ? 'disabled' : ''}>
+                                </div>
+                                <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+                                    <span style="font-size:10px; color:var(--text-secondary); font-family:'Barlow Condensed',sans-serif; letter-spacing:1px; text-transform:uppercase;">${rUnit === 'time' ? 'SECS' : 'REPS'}</span>
+                                    <input type="number" inputmode="numeric" class="set-input" placeholder="${rPlaceholder}"
+                                        value="${set.reps}" data-ex="${exIndex}" data-set="${setIndex}" data-field="reps"
+                                        ${set.completed ? 'disabled' : ''}>
+                                </div>
                             </div>
                             ${set.completed ?
                                 `<div style="display:flex; align-items:center; gap:8px; margin-top: 8px; flex-wrap:wrap;">
@@ -1494,7 +1555,7 @@ function renderActiveWorkout() {
                                 </div>` :
                                 `<div style="display:flex; gap:6px; margin-top:8px;">
                                     <button class="complete-set-btn" data-ex="${exIndex}" data-set="${setIndex}" style="flex:1;">✓ COMPLETE</button>
-                                    ${!isLockedPlan ? `<button class="skip-set-btn" data-ex="${exIndex}" data-set="${setIndex}" style="flex-shrink:0; padding:0 12px; background:transparent; border:1px solid var(--border); color:var(--text-secondary); font-size:12px; border-radius:8px; cursor:pointer; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:1px;">SKIP</button>` : ''}
+                                    ${!isLockedPlan ? `<button class="skip-set-btn" data-ex="${exIndex}" data-set="${setIndex}" title="SKIP SET" aria-label="Skip set" style="flex-shrink:0; width:36px; height:36px; background:transparent; border:1px solid var(--border); color:var(--text-secondary); font-size:16px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">✕</button>` : ''}
                                 </div>`
                             }`}
                         </div>
@@ -1643,6 +1704,7 @@ function finishWorkout() {
     document.getElementById('workout-hero').style.display = 'block';
     document.getElementById('active-workout').style.display = 'none';
     document.getElementById('rest-timer').classList.remove('active');
+    updateWorkoutActiveIndicator('workout');
     updateWorkoutHero();
     showToast('WORKOUT SAVED! 💪');
 }
@@ -2142,7 +2204,17 @@ function showWorkoutDetail(index) {
     let duration = '';
     if (w.startTime && w.endTime) {
         const mins = Math.round((new Date(w.endTime) - new Date(w.startTime)) / 60000);
-        duration = `${mins} MIN`;
+        if (!isNaN(mins) && mins >= 0) {
+            if (mins >= 60) {
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                duration = m > 0 ? `${h}H ${m}M` : `${h}H`;
+            } else {
+                duration = `${mins} MIN`;
+            }
+        } else {
+            duration = '—';
+        }
     }
     document.getElementById('wdm-name').textContent = workoutTitle;
     const body = document.getElementById('wdm-body');

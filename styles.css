@@ -1241,6 +1241,39 @@ select.form-input:focus {
 }
 
 /* ═══════════════════════════════════════════
+   PROFILE SECTION HEADINGS
+   ═══════════════════════════════════════════ */
+
+.profile-section-heading {
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 16px;
+    font-family: 'Barlow Condensed', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ═══════════════════════════════════════════
+   ACTIVE WORKOUT INDICATOR
+   ═══════════════════════════════════════════ */
+
+.workout-active-badge {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #fff;
+    border-radius: 50%;
+    vertical-align: middle;
+    margin-left: 4px;
+    animation: workout-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes workout-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(0.65); }
+}
+
+/* ═══════════════════════════════════════════
    INSTALL BANNER
    ═══════════════════════════════════════════ */
 
