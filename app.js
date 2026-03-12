@@ -209,17 +209,17 @@ async function loadUserRole() {
     try {
         const snap = await getDoc(doc(db, 'users', currentUser.uid));
         const data = snap.data() || {};
-        userRole = data.role;
         userTrainerId = data.trainerId || null;
         userTrainerName = data.trainerDisplayName || null;
-        // Users without a role are existing accounts that pre-date the role
-        // system.  Show the role-selection screen so they can choose instead
-        // of silently assigning 'athlete' (which would overwrite trainers).
+        // Lazy-migrate users who pre-date the role system.  Infer trainer
+        // from the presence of a trainerProfile sub-object; fall back to
+        // athlete.  Avoids silently overwriting real trainers as athletes.
         if (!data.role) {
-            pendingRoleUid = currentUser.uid;
-            hideLoadingScreen();
-            document.getElementById('role-selection-screen').style.display = 'flex';
-            return;
+            const inferredRole = data.trainerProfile ? 'trainer' : 'athlete';
+            await updateDoc(doc(db, 'users', currentUser.uid), { role: inferredRole });
+            userRole = inferredRole;
+        } else {
+            userRole = data.role;
         }
         // Expose to trainer.js / messaging.js
         window.userRole = userRole;
