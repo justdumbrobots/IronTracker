@@ -209,12 +209,17 @@ async function loadUserRole() {
     try {
         const snap = await getDoc(doc(db, 'users', currentUser.uid));
         const data = snap.data() || {};
-        userRole = data.role || 'athlete';
+        userRole = data.role;
         userTrainerId = data.trainerId || null;
         userTrainerName = data.trainerDisplayName || null;
-        // Lazy-migrate existing users who predate the role system
+        // Users without a role are existing accounts that pre-date the role
+        // system.  Show the role-selection screen so they can choose instead
+        // of silently assigning 'athlete' (which would overwrite trainers).
         if (!data.role) {
-            await updateDoc(doc(db, 'users', currentUser.uid), { role: 'athlete' });
+            pendingRoleUid = currentUser.uid;
+            hideLoadingScreen();
+            document.getElementById('role-selection-screen').style.display = 'flex';
+            return;
         }
         // Expose to trainer.js / messaging.js
         window.userRole = userRole;
@@ -2409,7 +2414,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function showToast(message) {
+function showToast(message, type = 'info') {
     let toast = document.getElementById('toast');
     if (!toast) {
         toast = document.createElement('div');
@@ -2423,10 +2428,13 @@ function showToast(message) {
         });
         document.body.appendChild(toast);
     }
+    const borderColor = type === 'error' ? 'var(--error)' : type === 'success' ? 'var(--success, #4caf50)' : 'var(--primary)';
+    toast.style.border = `2px solid ${borderColor}`;
     toast.textContent = message;
     toast.style.opacity = '1';
     setTimeout(() => toast.style.opacity = '0', 2500);
 }
+window.showToastGlobal = showToast;
 
 // ═════════════════════════════════════════════
 // FCM — PUSH NOTIFICATIONS

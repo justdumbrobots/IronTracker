@@ -6,6 +6,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 // ─── State ────────────────────────────────────────────────────────────────────
+let activeCoachingContainerId = 'coaching-panel'; // tracks which div coaching panel renders into
 let trainerActivePane = 'athletes';
 let myAthletes = [];
 let connectionRequests = [];
@@ -51,7 +52,18 @@ export function initTrainer() {
 }
 
 export function loadTrainerView() {
-    switchTrainerPane(trainerActivePane);
+    const role = window.userRole;
+    const mgmt = document.getElementById('trainer-management-wrapper');
+    const athleteWrapper = document.getElementById('athlete-coaching-wrapper');
+    if (role === 'trainer') {
+        if (mgmt) mgmt.style.display = '';
+        if (athleteWrapper) athleteWrapper.style.display = 'none';
+        switchTrainerPane(trainerActivePane);
+    } else {
+        if (mgmt) mgmt.style.display = 'none';
+        if (athleteWrapper) athleteWrapper.style.display = '';
+        loadCoachingPanel('athlete-coaching-panel');
+    }
 }
 
 // ─── Pane Router ──────────────────────────────────────────────────────────────
@@ -118,8 +130,10 @@ async function viewAthleteDetail(athleteUid, athleteName) {
     container.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-secondary);">LOADING ${esc(athleteName)}...</div>`;
 
     try {
-        const wdSnap = await getDoc(doc(db, 'users', athleteUid, 'data', 'workout_data'));
-        const userSnap = await getDoc(doc(db, 'users', athleteUid));
+        const [wdSnap, userSnap] = await Promise.all([
+            getDoc(doc(db, 'users', athleteUid, 'data', 'workout_data')),
+            getDoc(doc(db, 'users', athleteUid))
+        ]);
         const data = wdSnap.exists() ? wdSnap.data() : {};
         const profile = userSnap.exists() ? userSnap.data() : {};
         const history = data.workoutHistory || [];
@@ -555,7 +569,7 @@ async function ensureTrainerProfile() {
 
 // ─── TRAINER: COACHING PANEL (profile page) ───────────────────────────────────
 async function showAthleteInviteSearch() {
-    const container = el('coaching-panel');
+    const container = el(activeCoachingContainerId);
     if (!container) return;
     container.innerHTML = '<p style="color:var(--text-secondary); font-size:13px;">LOADING...</p>';
     try {
@@ -596,10 +610,9 @@ async function saveTrainerDirectorySettings() {
     const listed = el('cp-listed')?.checked ?? true;
     const accepting = el('cp-accepting')?.checked ?? true;
     try {
-        const snap = await getDoc(doc(db, 'users', getUser().uid));
-        const existing = snap.data()?.trainerProfile || {};
         await updateDoc(doc(db, 'users', getUser().uid), {
-            trainerProfile: { ...existing, listedInDirectory: listed, acceptingClients: accepting }
+            'trainerProfile.listedInDirectory': listed,
+            'trainerProfile.acceptingClients': accepting
         });
         toast(listed ? 'LISTED IN DIRECTORY ✓' : 'REMOVED FROM DIRECTORY', listed ? 'success' : 'info');
     } catch(e) { toast('ERROR SAVING', 'error'); console.error(e); }
@@ -698,8 +711,9 @@ async function declineTrainerInvite(requestId) {
 }
 
 // ─── COACHING PANEL ────────────────────────────────────────────────────────────
-export async function loadCoachingPanel() {
-    const container = el('coaching-panel');
+export async function loadCoachingPanel(containerId = 'coaching-panel') {
+    activeCoachingContainerId = containerId;
+    const container = el(containerId);
     if (!container) return;
     const user = getUser();
     if (!user) return;
@@ -790,7 +804,7 @@ async function unlinkFromTrainer() {
 
 // ─── ATHLETE: TRAINER DIRECTORY ───────────────────────────────────────────────
 async function showTrainerDirectory() {
-    const container = el('coaching-panel');
+    const container = el(activeCoachingContainerId);
     if (!container) return;
     container.innerHTML = '<p style="color:var(--text-secondary);">LOADING TRAINERS...</p>';
     try {
@@ -844,7 +858,7 @@ function renderTrainerCards(trainers) {
 function filterTrainers() {
     const q = el('trainer-search')?.value.toLowerCase() || '';
     const list = el('trainer-directory-list');
-    const trainers = document.getElementById('coaching-panel')?._allTrainers || [];
+    const trainers = el(activeCoachingContainerId)?._allTrainers || [];
     if (!list) return;
     const filtered = trainers.filter(t =>
         (t.displayName||'').toLowerCase().includes(q) ||
@@ -886,7 +900,7 @@ function listenForAssignments() {
 }
 
 async function showAssignments() {
-    const container = el('coaching-panel');
+    const container = el(activeCoachingContainerId);
     if (!container) return;
     if (myAssignments.length === 0) { toast('NO PENDING ASSIGNMENTS'); return; }
     container.innerHTML = `

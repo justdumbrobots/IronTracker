@@ -321,20 +321,28 @@
                 </div>
             </div>
 
-            <!-- TRAINER VIEW (coaches only) -->
+            <!-- TRAINER VIEW (role-aware: coaches see management, athletes see coaching panel) -->
             <div id="trainer-view" class="view">
                 <h2 style="font-family:'Barlow Condensed',sans-serif; font-size:36px; font-weight:800; text-transform:uppercase; letter-spacing:2px; margin-bottom:6px;">COACHING</h2>
-                <p style="color:var(--text-secondary); font-size:14px; text-transform:uppercase; letter-spacing:1px; margin-bottom:20px;">MANAGE YOUR ATHLETES</p>
-                <div class="community-sub-tabs" style="margin-bottom:20px;">
-                    <button class="trainer-tab community-tab active" data-pane="athletes" onclick="switchTrainerPane('athletes')">MY ATHLETES</button>
-                    <button class="trainer-tab community-tab" data-pane="requests" onclick="switchTrainerPane('requests')">REQUESTS <span class="nav-badge" id="trainer-requests-badge2" style="display:none;"></span></button>
-                    <button class="trainer-tab community-tab" data-pane="assign" onclick="switchTrainerPane('assign')">ASSIGN PLAN</button>
-                    <button class="trainer-tab community-tab" data-pane="profile" onclick="switchTrainerPane('profile')">MY PROFILE</button>
+                <!-- Trainer management UI (hidden for athletes) -->
+                <div id="trainer-management-wrapper">
+                    <p style="color:var(--text-secondary); font-size:14px; text-transform:uppercase; letter-spacing:1px; margin-bottom:20px;">MANAGE YOUR ATHLETES</p>
+                    <div class="community-sub-tabs" style="margin-bottom:20px;">
+                        <button class="trainer-tab community-tab active" data-pane="athletes" onclick="switchTrainerPane('athletes')">MY ATHLETES</button>
+                        <button class="trainer-tab community-tab" data-pane="requests" onclick="switchTrainerPane('requests')">REQUESTS <span class="nav-badge" id="trainer-requests-badge2" style="display:none;"></span></button>
+                        <button class="trainer-tab community-tab" data-pane="assign" onclick="switchTrainerPane('assign')">ASSIGN PLAN</button>
+                        <button class="trainer-tab community-tab" data-pane="profile" onclick="switchTrainerPane('profile')">MY PROFILE</button>
+                    </div>
+                    <div id="trainer-athletes-pane"><p style="color:var(--text-secondary);">LOADING...</p></div>
+                    <div id="trainer-requests-pane" style="display:none;"></div>
+                    <div id="trainer-assign-pane" style="display:none;"></div>
+                    <div id="trainer-profile-pane" style="display:none;"></div>
                 </div>
-                <div id="trainer-athletes-pane"><p style="color:var(--text-secondary);">LOADING...</p></div>
-                <div id="trainer-requests-pane" style="display:none;"></div>
-                <div id="trainer-assign-pane" style="display:none;"></div>
-                <div id="trainer-profile-pane" style="display:none;"></div>
+                <!-- Athlete coaching panel (hidden for trainers) -->
+                <div id="athlete-coaching-wrapper" style="display:none;">
+                    <p style="color:var(--text-secondary); font-size:14px; text-transform:uppercase; letter-spacing:1px; margin-bottom:20px;">YOUR COACHING</p>
+                    <div id="athlete-coaching-panel"><p style="color:var(--text-secondary);">LOADING...</p></div>
+                </div>
             </div>
 
             <!-- MESSAGES VIEW -->
