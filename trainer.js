@@ -112,7 +112,7 @@ function renderAthletesList() {
             <button class="btn btn-small btn-secondary" onclick="copyReferralLink()">📋 SHARE REFERRAL LINK</button>
         </div>
         ${myAthletes.map(a => `
-            <div class="trainer-athlete-card" onclick="viewAthleteDetail('${a.uid}','${esc(a.displayName || a.email)}')">
+            <div class="trainer-athlete-card" data-uid="${esc(a.uid)}" data-name="${esc(a.displayName || a.email)}" style="cursor:pointer;">
                 <div class="trainer-athlete-avatar">${(a.displayName || a.email || '?').charAt(0).toUpperCase()}</div>
                 <div style="flex:1; min-width:0;">
                     <div style="font-weight:700; font-family:'Barlow Condensed',sans-serif; font-size:17px;">${esc(a.displayName || a.email)}</div>
@@ -122,6 +122,10 @@ function renderAthletesList() {
                 <div style="color:var(--text-secondary); font-size:20px;">›</div>
             </div>
         `).join('')}`;
+    container.onclick = e => {
+        const card = e.target.closest('.trainer-athlete-card[data-uid]');
+        if (card) viewAthleteDetail(card.dataset.uid, card.dataset.name);
+    };
 }
 
 async function viewAthleteDetail(athleteUid, athleteName) {
@@ -155,7 +159,7 @@ async function viewAthleteDetail(athleteUid, athleteName) {
             <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
                 <button class="btn btn-secondary btn-small" onclick="renderAthletesList()">← BACK</button>
                 <div style="font-family:'Barlow Condensed',sans-serif; font-weight:800; font-size:22px;">${esc(athleteName)}</div>
-                <button class="btn btn-small" style="margin-left:auto;" onclick="openMessageWith('${athleteUid}','${esc(athleteName)}')">💬 MESSAGE</button>
+                <button class="btn btn-small" style="margin-left:auto;" data-msg-uid="${esc(athleteUid)}" data-msg-name="${esc(athleteName)}" id="_athlete-msg-btn">💬 MESSAGE</button>
             </div>
 
             <!-- Stats row -->
@@ -189,12 +193,21 @@ async function viewAthleteDetail(athleteUid, athleteName) {
                 <h3 style="font-family:'Barlow Condensed',sans-serif; font-size:18px; text-transform:uppercase; margin-bottom:12px;">RECENT WORKOUTS</h3>
                 ${history.length === 0 ? '<p style="color:var(--text-secondary);">NO WORKOUTS YET.</p>' :
                     history.slice(0,10).map(w => `
-                        <div class="workout-history-card" style="cursor:pointer;" onclick="openAthleteWorkoutDetail('${athleteUid}','${esc(w.workoutId || '')}','${esc(athleteName)}')">
+                        <div class="workout-history-card" style="cursor:pointer;"
+                             data-wid="${esc(w.workoutId || '')}" data-auid="${esc(athleteUid)}" data-aname="${esc(athleteName)}">
                             <div style="font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:16px;">${esc(w.dayName || w.planName)}</div>
                             <div style="font-size:12px; color:var(--text-secondary); margin-top:2px;">${formatDate(w.date)} · ${(w.exercises||[]).length} EXERCISES</div>
                         </div>`).join('')
                 }
             </div>`;
+
+        // Wire buttons that carry UID data-attributes
+        const msgBtn = container.querySelector('#_athlete-msg-btn');
+        if (msgBtn) msgBtn.onclick = () => openMessageWith(msgBtn.dataset.msgUid, msgBtn.dataset.msgName);
+        container.addEventListener('click', e => {
+            const card = e.target.closest('.workout-history-card[data-wid]');
+            if (card) openAthleteWorkoutDetail(card.dataset.auid, card.dataset.wid, card.dataset.aname);
+        });
 
         // Draw body weight chart
         if (bwEntries.length >= 2) {
@@ -275,9 +288,12 @@ async function openAthleteWorkoutDetail(athleteUid, workoutId, athleteName) {
                     </div>`).join('')}
                 <div style="display:flex; gap:8px; margin-top:12px;">
                     <input type="text" class="form-input" id="trainer-comment-input" placeholder="ADD A NOTE..." maxlength="500" style="flex:1;">
-                    <button class="btn btn-small" onclick="submitTrainerComment('${athleteUid}','${esc(workoutId || 'none')}')">POST</button>
+                    <button class="btn btn-small" id="_post-comment-btn"
+                        data-auid="${esc(athleteUid)}" data-wid="${esc(workoutId || 'none')}">POST</button>
                 </div>
             </div>`;
+        const postBtn = body.querySelector('#_post-comment-btn');
+        if (postBtn) postBtn.onclick = () => submitTrainerComment(postBtn.dataset.auid, postBtn.dataset.wid);
     } catch(e) {
         console.error(e);
         body.innerHTML = '<p style="color:var(--error);">ERROR LOADING WORKOUT</p>';
@@ -347,11 +363,21 @@ function renderConnectionRequests() {
                     <div style="color:var(--text-secondary); font-size:12px;">${formatDate(r.createdAt)}</div>
                 </div>
                 <div style="display:flex; gap:8px;">
-                    <button class="btn btn-small" onclick="acceptConnectionRequest('${r.id}','${r.athleteId}','${esc(r.athleteDisplayName)}')">ACCEPT</button>
-                    <button class="btn btn-secondary btn-small" onclick="declineConnectionRequest('${r.id}')">DECLINE</button>
+                    <button class="btn btn-small" data-action="accept"
+                        data-rid="${esc(r.id)}" data-aid="${esc(r.athleteId)}" data-aname="${esc(r.athleteDisplayName)}">ACCEPT</button>
+                    <button class="btn btn-secondary btn-small" data-action="decline"
+                        data-rid="${esc(r.id)}">DECLINE</button>
                 </div>
             </div>`).join('')}`;
 
+    container.onclick = e => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        if (btn.dataset.action === 'accept')
+            acceptConnectionRequest(btn.dataset.rid, btn.dataset.aid, btn.dataset.aname);
+        else if (btn.dataset.action === 'decline')
+            declineConnectionRequest(btn.dataset.rid);
+    };
     renderCompletionsList();
 }
 
@@ -370,9 +396,14 @@ async function renderCompletionsList() {
                     <div style="font-weight:700; font-size:14px;">${esc(c.athleteDisplayName)}</div>
                     <div style="font-size:12px; color:var(--text-secondary);">${esc(c.workoutName)} · ${formatDate(c.completedAt)}</div>
                 </div>
-                <button class="btn btn-small btn-secondary" onclick="viewAthleteDetail('${c.athleteId}','${esc(c.athleteDisplayName)}'); window.switchView('trainer');">VIEW</button>
+                <button class="btn btn-small btn-secondary" data-action="view-athlete"
+                    data-auid="${esc(c.athleteId)}" data-aname="${esc(c.athleteDisplayName)}">VIEW</button>
             </div>`;
         }).join('');
+        container.onclick = e => {
+            const btn = e.target.closest('button[data-action="view-athlete"]');
+            if (btn) { viewAthleteDetail(btn.dataset.auid, btn.dataset.aname); window.switchView('trainer'); }
+        };
     } catch(e) { container.innerHTML = '<p style="color:var(--error);">ERROR LOADING</p>'; }
 }
 
@@ -656,8 +687,13 @@ async function doAthleteSearch() {
                         ${a.email ? `<div style="font-size:12px; color:var(--text-secondary);">${esc(a.email)}</div>` : ''}
                     </div>
                 </div>
-                <button class="btn btn-small" onclick="sendAthleteInvite('${a.uid}','${esc(a.displayName || a.email || 'User')}')">INVITE</button>
+                <button class="btn btn-small" data-action="invite"
+                    data-uid="${esc(a.uid)}" data-name="${esc(a.displayName || a.email || 'User')}">INVITE</button>
             </div>`).join('');
+        results.onclick = e => {
+            const btn = e.target.closest('button[data-action="invite"]');
+            if (btn) sendAthleteInvite(btn.dataset.uid, btn.dataset.name);
+        };
     } catch(e) {
         results.innerHTML = `<p style="color:var(--error); font-size:13px;">SEARCH FAILED — ${esc(e.message)}</p>`;
         console.error('doAthleteSearch error:', e);
@@ -744,7 +780,8 @@ export async function loadCoachingPanel(containerId = 'coaching-panel') {
                         <div style="font-size:20px; font-weight:800; font-family:'Barlow Condensed',sans-serif;">${esc(trainerName || 'Trainer')}</div>
                     </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                        <button class="btn btn-small" onclick="openMessageWith('${trainerId}','${esc(trainerName || 'Trainer')}')">💬 MESSAGE</button>
+                        <button class="btn btn-small" id="_msg-trainer-btn"
+                            data-uid="${esc(trainerId)}" data-name="${esc(trainerName || 'Trainer')}">💬 MESSAGE</button>
                         <button class="btn btn-small btn-secondary" onclick="unlinkFromTrainer()">UNLINK</button>
                     </div>
                 </div>
@@ -772,8 +809,10 @@ export async function loadCoachingPanel(containerId = 'coaching-panel') {
                                 <div style="font-size:12px; color:var(--text-secondary);">WANTS TO COACH YOU</div>
                             </div>
                             <div style="display:flex; gap:8px;">
-                                <button class="btn btn-small" onclick="acceptTrainerInvite('${inv.id}','${inv.trainerId}','${esc(inv.trainerDisplayName || 'Trainer')}')">ACCEPT</button>
-                                <button class="btn btn-small btn-secondary" onclick="declineTrainerInvite('${inv.id}')">DECLINE</button>
+                                <button class="btn btn-small" data-action="accept-invite"
+                                    data-iid="${esc(inv.id)}" data-tid="${esc(inv.trainerId)}" data-tname="${esc(inv.trainerDisplayName || 'Trainer')}">ACCEPT</button>
+                                <button class="btn btn-small btn-secondary" data-action="decline-invite"
+                                    data-iid="${esc(inv.id)}">DECLINE</button>
                             </div>
                         </div>`).join('')}
                 </div>` : ''}
@@ -784,6 +823,17 @@ export async function loadCoachingPanel(containerId = 'coaching-panel') {
                     <button class="btn" onclick="showTrainerDirectory()">FIND A TRAINER</button>
                 </div>`;
         }
+        // Wire buttons that carry UID/ID data-attributes
+        const msgBtn = container.querySelector('#_msg-trainer-btn');
+        if (msgBtn) msgBtn.onclick = () => openMessageWith(msgBtn.dataset.uid, msgBtn.dataset.name);
+        container.onclick = e => {
+            const btn = e.target.closest('button[data-action]');
+            if (!btn) return;
+            if (btn.dataset.action === 'accept-invite')
+                acceptTrainerInvite(btn.dataset.iid, btn.dataset.tid, btn.dataset.tname);
+            else if (btn.dataset.action === 'decline-invite')
+                declineTrainerInvite(btn.dataset.iid);
+        };
     } catch(e) { console.error('loadCoachingPanel error:', e); }
 }
 
@@ -832,6 +882,11 @@ async function showTrainerDirectory() {
                 ${renderTrainerCards(trainers)}
             </div>`;
         container._allTrainers = trainers;
+        // Delegate connect-button clicks — avoids UID in onclick attributes
+        container.addEventListener('click', e => {
+            const btn = e.target.closest('button[data-action="connect"]');
+            if (btn) requestTrainerConnection(btn.dataset.tuid, btn.dataset.tname);
+        });
     } catch(e) { container.innerHTML = '<p style="color:var(--error);">ERROR LOADING DIRECTORY</p>'; }
 }
 
@@ -850,7 +905,7 @@ function renderTrainerCards(trainers) {
                 </div>
                 ${p.bio ? `<div style="font-size:13px; color:var(--text-secondary);">${esc(p.bio)}</div>` : ''}
                 ${p.specialties?.length ? `<div style="display:flex; flex-wrap:wrap; gap:6px;">${p.specialties.map(s=>`<span style="background:var(--bg-hover); padding:2px 8px; border-radius:12px; font-size:11px; font-family:'Barlow Condensed',sans-serif; font-weight:700; letter-spacing:1px;">${s}</span>`).join('')}</div>` : ''}
-                ${p.acceptingClients ? `<button class="btn btn-small" onclick="requestTrainerConnection('${t.uid}','${esc(t.displayName)}')">REQUEST CONNECTION</button>` : ''}
+                ${p.acceptingClients ? `<button class="btn btn-small" data-action="connect" data-tuid="${esc(t.uid)}" data-tname="${esc(t.displayName)}">REQUEST CONNECTION</button>` : ''}
             </div>`;
     }).join('');
 }
@@ -944,7 +999,19 @@ async function declineAssignment(assignmentId) {
     } catch(e) { toast('ERROR', 'error'); }
 }
 
+// ─── Cleanup — call on logout to stop all real-time listeners ─────────────────
+function cleanupTrainerListeners() {
+    if (unsubscribeAthletes)    { unsubscribeAthletes();    unsubscribeAthletes    = null; }
+    if (unsubscribeRequests)    { unsubscribeRequests();    unsubscribeRequests    = null; }
+    if (unsubscribeAssignments) { unsubscribeAssignments(); unsubscribeAssignments = null; }
+    if (unsubscribeCompletions) { unsubscribeCompletions(); unsubscribeCompletions = null; }
+    myAthletes = [];
+    connectionRequests = [];
+    myAssignments = [];
+}
+
 // ─── Window Exports ───────────────────────────────────────────────────────────
+window.cleanupTrainerListeners = cleanupTrainerListeners;
 window.loadTrainerView         = loadTrainerView;
 window.switchTrainerPane       = switchTrainerPane;
 window.initTrainer             = initTrainer;
