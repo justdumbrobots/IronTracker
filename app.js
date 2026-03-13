@@ -3350,9 +3350,15 @@ async function loadAdminUsers() {
             const lastSeen = u.lastSeen ? new Date(u.lastSeen).toLocaleString() : 'NEVER';
             const displayName = escapeHtml(u.displayName || '—');
             const email = escapeHtml(u.email || d.id);
+            const role = u.role || 'unknown';
+            const roleColor = role === 'trainer' ? 'var(--primary)' : role === 'athlete' ? 'var(--success, #4caf50)' : 'var(--text-muted)';
+            const roleTag = `<span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;padding:2px 7px;border-radius:4px;border:1px solid ${roleColor};color:${roleColor};text-transform:uppercase;">${escapeHtml(role)}</span>`;
             return `<div class="admin-row">
                 <div style="flex:1;">
-                    <div style="font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:16px;">${displayName}</div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+                        <div style="font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:16px;">${displayName}</div>
+                        ${roleTag}
+                    </div>
                     <div style="font-size:13px;color:var(--text-secondary);">${email}</div>
                     <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">LAST SEEN: ${lastSeen}</div>
                 </div>
