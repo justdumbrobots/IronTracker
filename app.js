@@ -214,7 +214,10 @@ async function loadUserRole() {
         // Lazy-migrate users who pre-date the role system.  Infer trainer
         // from the presence of a trainerProfile sub-object; fall back to
         // athlete.  Avoids silently overwriting real trainers as athletes.
-        if (!data.role) {
+        // Migrate users who either lack a role field or were incorrectly
+        // stamped 'athlete' by the old buggy migration (before this fix).
+        // A user with trainerProfile data was using trainer features → trainer.
+        if (!data.role || (data.role === 'athlete' && data.trainerProfile)) {
             const inferredRole = data.trainerProfile ? 'trainer' : 'athlete';
             await updateDoc(doc(db, 'users', currentUser.uid), { role: inferredRole });
             userRole = inferredRole;
@@ -425,9 +428,15 @@ async function performAccountDeletion(user) {
     try {
         await deleteDoc(doc(db, 'users', user.uid, 'data', 'workout_data'));
     } catch(e) { /* sub-doc may not exist */ }
-    await deleteDoc(doc(db, 'users', user.uid));
-    await deleteUser(user);
-    showToast('ACCOUNT DELETED', 'info');
+    try {
+        await deleteDoc(doc(db, 'users', user.uid));
+        await deleteUser(user);
+        showToast('ACCOUNT DELETED', 'info');
+    } catch(e) {
+        showToast('DELETE FAILED: ' + e.message, 'error');
+        console.error('performAccountDeletion error:', e);
+        throw e; // re-throw so callers can distinguish auth errors
+    }
 }
 
 async function updateProfileUI() {
