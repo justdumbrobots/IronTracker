@@ -13,6 +13,7 @@ import {
     reauthenticateWithPopup
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 import {
+    getDocsFromServer,
     collection,
     doc,
     setDoc,
@@ -425,6 +426,10 @@ async function confirmDeleteWithPassword() {
 }
 
 async function performAccountDeletion(user) {
+    // Stop all Firestore listeners before deleting auth — prevents permission
+    // errors firing on the snapshot after the auth token is revoked.
+    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+    if (typeof window.cleanupTrainerListeners === 'function') window.cleanupTrainerListeners();
     try {
         await deleteDoc(doc(db, 'users', user.uid, 'data', 'workout_data'));
     } catch(e) { /* sub-doc may not exist */ }
@@ -435,7 +440,8 @@ async function performAccountDeletion(user) {
     } catch(e) {
         showToast('DELETE FAILED: ' + e.message, 'error');
         console.error('performAccountDeletion error:', e);
-        throw e; // re-throw so callers can distinguish auth errors
+        // Do NOT re-throw — we already showed the error; re-throwing causes
+        // the caller's catch to show a second misleading toast.
     }
 }
 
@@ -3335,7 +3341,9 @@ async function loadAdminUsers() {
     const el = document.getElementById('admin-users-list');
     el.innerHTML = '<p style="color:var(--text-secondary);">Loading...</p>';
     try {
-        const snap = await getDocs(collection(db, 'users'));
+        // Force server read so newly registered users appear immediately
+        // rather than being masked by Firestore's local cache.
+        const snap = await getDocsFromServer(collection(db, 'users'));
         if (snap.empty) { el.innerHTML = '<p style="color:var(--text-secondary);">NO USERS FOUND.</p>'; return; }
         el.innerHTML = snap.docs.map(d => {
             const u = d.data();
