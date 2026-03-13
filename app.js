@@ -247,7 +247,7 @@ async function handleLogin(email, password) {
         if (error.code === 'auth/user-not-found') message = 'NO ACCOUNT FOUND';
         if (error.code === 'auth/wrong-password') message = 'INCORRECT PASSWORD';
         if (error.code === 'auth/invalid-email') message = 'INVALID EMAIL';
-        alert(message);
+        showToast(message, 'error');
     }
 }
 
@@ -330,9 +330,9 @@ async function handleGoogleAuth() {
 }
 
 async function handleLogout() {
-    if (!confirm('ARE YOU SURE YOU WANT TO LOGOUT?')) return;
     try {
         if (unsubscribeSnapshot) unsubscribeSnapshot();
+        if (typeof window.cleanupTrainerListeners === 'function') window.cleanupTrainerListeners();
         await signOut(auth);
         workoutPlans = [];
         workoutHistory = [];
@@ -341,7 +341,7 @@ async function handleLogout() {
         progressPhotos = [];
         showToast('LOGGED OUT SUCCESSFULLY');
     } catch (error) {
-        alert('LOGOUT FAILED: ' + error.message);
+        showToast('LOGOUT FAILED: ' + error.message, 'error');
     }
 }
 
@@ -958,7 +958,7 @@ function saveWeight() {
     const date = document.getElementById('weight-date-input').value;
     
     if (!weight || !date) {
-        alert('PLEASE ENTER WEIGHT AND DATE');
+        showToast('PLEASE ENTER WEIGHT AND DATE', 'error');
         return;
     }
     
@@ -987,7 +987,7 @@ function saveWeightGoal() {
 // ═════════════════════════════════════════════
 function exportWorkoutDataToCSV() {
     if (workoutHistory.length === 0) {
-        alert('NO WORKOUT DATA TO EXPORT');
+        showToast('NO WORKOUT DATA TO EXPORT', 'error');
         return;
     }
     
@@ -1069,7 +1069,7 @@ function saveExerciseTimer() {
     const duration = parseInt(document.getElementById('timer-duration-input').value);
     
     if (!exercise) {
-        alert('PLEASE ENTER EXERCISE NAME');
+        showToast('PLEASE ENTER EXERCISE NAME', 'error');
         return;
     }
     
@@ -1080,7 +1080,6 @@ function saveExerciseTimer() {
 }
 
 function removeExerciseTimer(exercise) {
-    if (!confirm(`REMOVE TIMER FOR ${exercise.toUpperCase()}?`)) return;
     delete restTimerSettings.exerciseOverrides[exercise];
     saveToFirebase();
 }
@@ -1149,24 +1148,23 @@ async function uploadProgressPhoto(file) {
         await loadProgressPhotos();
     } catch (error) {
         console.error('Error uploading photo:', error);
-        alert('PHOTO UPLOAD FAILED');
+        showToast('PHOTO UPLOAD FAILED', 'error');
     }
 }
 
 async function deleteProgressPhoto(date) {
-    if (!confirm('DELETE THIS PHOTO?')) return;
-    
     const photo = progressPhotos.find(p => p.date === date);
     if (!photo) return;
-    
-    try {
-        await deleteObject(photo.ref);
-        showToast('PHOTO DELETED');
-        await loadProgressPhotos();
-    } catch (error) {
-        console.error('Error deleting photo:', error);
-        alert('DELETE FAILED');
-    }
+    showConfirmModal('DELETE THIS PHOTO?', async () => {
+        try {
+            await deleteObject(photo.ref);
+            showToast('PHOTO DELETED');
+            await loadProgressPhotos();
+        } catch (error) {
+            console.error('Error deleting photo:', error);
+            showToast('DELETE FAILED', 'error');
+        }
+    });
 }
 
 // ═════════════════════════════════════════════
@@ -1200,12 +1198,12 @@ async function uploadProfilePhoto(file) {
     if (!currentUser) return;
     
     if (!file.type.startsWith('image/')) {
-        alert('PLEASE SELECT AN IMAGE FILE');
+        showToast('PLEASE SELECT AN IMAGE FILE', 'error');
         return;
     }
-    
+
     if (file.size > 5 * 1024 * 1024) {
-        alert('IMAGE TOO LARGE (MAX 5MB)');
+        showToast('IMAGE TOO LARGE (MAX 5MB)', 'error');
         return;
     }
     
@@ -1218,7 +1216,7 @@ async function uploadProfilePhoto(file) {
         await loadProfilePhoto();
     } catch (error) {
         console.error('Error uploading profile photo:', error);
-        alert('PHOTO UPLOAD FAILED: ' + error.message);
+        showToast('PHOTO UPLOAD FAILED: ' + error.message, 'error');
     }
 }
 
@@ -1421,31 +1419,31 @@ function selectPlan(planId) {
 }
 
 function deletePlan(index) {
-    if (!confirm(`DELETE "${workoutPlans[index].name}"?`)) return;
-    const planId = workoutPlans[index].id;
-    if (selectedPlanId === planId) {
-        selectedPlanId = null;
-    }
-    workoutPlans.splice(index, 1);
-    saveToFirebase();
+    const planName = workoutPlans[index]?.name || 'THIS PLAN';
+    showConfirmModal(`DELETE "${planName}"?`, () => {
+        const planId = workoutPlans[index].id;
+        if (selectedPlanId === planId) selectedPlanId = null;
+        workoutPlans.splice(index, 1);
+        saveToFirebase();
+    });
 }
 
 function startWorkout() {
     if (!selectedPlanId) {
-        alert('PLEASE SELECT A WORKOUT PLAN FIRST.');
+        showToast('PLEASE SELECT A WORKOUT PLAN FIRST', 'error');
         switchView('plans');
         return;
     }
-    
+
     const plan = workoutPlans.find(p => p.id === selectedPlanId);
     if (!plan) {
-        alert('SELECTED PLAN NOT FOUND.');
+        showToast('SELECTED PLAN NOT FOUND', 'error');
         return;
     }
-    
+
     const nextWorkout = getNextWorkoutDay(selectedPlanId);
     if (!nextWorkout) {
-        alert('NO WORKOUT DAY FOUND IN PLAN.');
+        showToast('NO WORKOUT DAY FOUND IN PLAN', 'error');
         return;
     }
     
@@ -1689,11 +1687,11 @@ function completeSet(exIndex, setIndex) {
 
 function finishWorkout() {
     const completedSets = currentWorkout.exercises.flatMap(e => e.sets.filter(s => s.completed));
-    if (completedSets.length === 0) {
-        if (!confirm('NO SETS COMPLETED. FINISH ANYWAY?')) return;
-    } else {
-        if (!confirm('FINISH WORKOUT?')) return;
-    }
+    const msg = completedSets.length === 0 ? 'NO SETS COMPLETED. FINISH ANYWAY?' : 'FINISH WORKOUT?';
+    showConfirmModal(msg, _doFinishWorkout);
+}
+
+function _doFinishWorkout() {
     clearInterval(restInterval);
     clearInterval(elapsedInterval);
     clearInterval(stopwatchInterval);
@@ -1901,7 +1899,7 @@ function addDayToBuilder(prefillDay = null) {
     
     dayContainer.querySelector('.remove-day-btn').addEventListener('click', () => {
         if (builder.children.length === 1) {
-            alert('PLAN MUST HAVE AT LEAST ONE DAY');
+            showToast('PLAN MUST HAVE AT LEAST ONE DAY', 'error');
             return;
         }
         dayContainer.remove();
@@ -2070,7 +2068,7 @@ function savePlan() {
     const description = document.getElementById('plan-description').value.trim();
     
     if (!name) {
-        alert('PLAN NAME IS REQUIRED.');
+        showToast('PLAN NAME IS REQUIRED', 'error');
         return;
     }
     
@@ -2080,7 +2078,7 @@ function savePlan() {
     daysBuilder.querySelectorAll('.day-container').forEach((dayContainer, dayIdx) => {
         const dayName = dayContainer.querySelector('.day-name-input').value.trim();
         if (!dayName) {
-            alert(`DAY ${dayIdx + 1} NEEDS A NAME`);
+            showToast(`DAY ${dayIdx + 1} NEEDS A NAME`, 'error');
             return;
         }
         
@@ -2105,7 +2103,7 @@ function savePlan() {
     });
     
     if (days.length === 0) {
-        alert('ADD AT LEAST ONE DAY WITH EXERCISES.');
+        showToast('ADD AT LEAST ONE DAY WITH EXERCISES', 'error');
         return;
     }
     
@@ -2444,6 +2442,26 @@ function showToast(message, type = 'info') {
     setTimeout(() => toast.style.opacity = '0', 2500);
 }
 window.showToastGlobal = showToast;
+
+// Reusable confirm overlay — replaces browser confirm() throughout the app.
+function showConfirmModal(message, onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML = `
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:360px;width:100%;text-align:center;">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;margin-bottom:20px;">${escapeHtml(message)}</div>
+            <div style="display:flex;gap:12px;justify-content:center;">
+                <button class="btn" id="_cm-yes">YES</button>
+                <button class="btn btn-secondary" id="_cm-no">CANCEL</button>
+            </div>
+        </div>`;
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    overlay.querySelector('#_cm-yes').onclick = () => { close(); onConfirm(); };
+    overlay.querySelector('#_cm-no').onclick = close;
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+}
+window.showConfirmModal = showConfirmModal;
 
 // ═════════════════════════════════════════════
 // FCM — PUSH NOTIFICATIONS
