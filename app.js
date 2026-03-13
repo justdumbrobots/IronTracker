@@ -13,6 +13,7 @@ import {
     reauthenticateWithPopup
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 import {
+    getDocsFromServer,
     collection,
     doc,
     setDoc,
@@ -425,6 +426,10 @@ async function confirmDeleteWithPassword() {
 }
 
 async function performAccountDeletion(user) {
+    // Stop all Firestore listeners before deleting auth — prevents permission
+    // errors firing on the snapshot after the auth token is revoked.
+    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+    if (typeof window.cleanupTrainerListeners === 'function') window.cleanupTrainerListeners();
     try {
         await deleteDoc(doc(db, 'users', user.uid, 'data', 'workout_data'));
     } catch(e) { /* sub-doc may not exist */ }
@@ -435,7 +440,8 @@ async function performAccountDeletion(user) {
     } catch(e) {
         showToast('DELETE FAILED: ' + e.message, 'error');
         console.error('performAccountDeletion error:', e);
-        throw e; // re-throw so callers can distinguish auth errors
+        // Do NOT re-throw — we already showed the error; re-throwing causes
+        // the caller's catch to show a second misleading toast.
     }
 }
 
@@ -3335,16 +3341,24 @@ async function loadAdminUsers() {
     const el = document.getElementById('admin-users-list');
     el.innerHTML = '<p style="color:var(--text-secondary);">Loading...</p>';
     try {
-        const snap = await getDocs(collection(db, 'users'));
+        // Force server read so newly registered users appear immediately
+        // rather than being masked by Firestore's local cache.
+        const snap = await getDocsFromServer(collection(db, 'users'));
         if (snap.empty) { el.innerHTML = '<p style="color:var(--text-secondary);">NO USERS FOUND.</p>'; return; }
         el.innerHTML = snap.docs.map(d => {
             const u = d.data();
             const lastSeen = u.lastSeen ? new Date(u.lastSeen).toLocaleString() : 'NEVER';
             const displayName = escapeHtml(u.displayName || '—');
             const email = escapeHtml(u.email || d.id);
+            const role = u.role || 'unknown';
+            const roleColor = role === 'trainer' ? 'var(--primary)' : role === 'athlete' ? 'var(--success, #4caf50)' : 'var(--text-muted)';
+            const roleTag = `<span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:1px;padding:2px 7px;border-radius:4px;border:1px solid ${roleColor};color:${roleColor};text-transform:uppercase;">${escapeHtml(role)}</span>`;
             return `<div class="admin-row">
                 <div style="flex:1;">
-                    <div style="font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:16px;">${displayName}</div>
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+                        <div style="font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:16px;">${displayName}</div>
+                        ${roleTag}
+                    </div>
                     <div style="font-size:13px;color:var(--text-secondary);">${email}</div>
                     <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">LAST SEEN: ${lastSeen}</div>
                 </div>
