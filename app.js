@@ -209,12 +209,17 @@ async function loadUserRole() {
     try {
         const snap = await getDoc(doc(db, 'users', currentUser.uid));
         const data = snap.data() || {};
-        userRole = data.role || 'athlete';
         userTrainerId = data.trainerId || null;
         userTrainerName = data.trainerDisplayName || null;
-        // Lazy-migrate existing users who predate the role system
+        // Lazy-migrate users who pre-date the role system.  Infer trainer
+        // from the presence of a trainerProfile sub-object; fall back to
+        // athlete.  Avoids silently overwriting real trainers as athletes.
         if (!data.role) {
-            await updateDoc(doc(db, 'users', currentUser.uid), { role: 'athlete' });
+            const inferredRole = data.trainerProfile ? 'trainer' : 'athlete';
+            await updateDoc(doc(db, 'users', currentUser.uid), { role: inferredRole });
+            userRole = inferredRole;
+        } else {
+            userRole = data.role;
         }
         // Expose to trainer.js / messaging.js
         window.userRole = userRole;
@@ -2409,7 +2414,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function showToast(message) {
+function showToast(message, type = 'info') {
     let toast = document.getElementById('toast');
     if (!toast) {
         toast = document.createElement('div');
@@ -2423,10 +2428,13 @@ function showToast(message) {
         });
         document.body.appendChild(toast);
     }
+    const borderColor = type === 'error' ? 'var(--error)' : type === 'success' ? 'var(--success, #4caf50)' : 'var(--primary)';
+    toast.style.border = `2px solid ${borderColor}`;
     toast.textContent = message;
     toast.style.opacity = '1';
     setTimeout(() => toast.style.opacity = '0', 2500);
 }
+window.showToastGlobal = showToast;
 
 // ═════════════════════════════════════════════
 // FCM — PUSH NOTIFICATIONS
